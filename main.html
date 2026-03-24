@@ -460,6 +460,7 @@ function populateFilters() {
 
 function filterRows(projId, asgnId, waLabel, objTypeFilter) {
   return rows.filter(r =>
+    (r['TaskStatusID'] || '').toLowerCase() !== 'waived' &&
     (!projId       || r['ProjectName']  === projId) &&
     (!asgnId       || r['EntityWorked'] === asgnId) &&
     (!waLabel      || r._waLabel        === waLabel) &&
@@ -510,9 +511,10 @@ function renderAssignee() {
   accountable.forEach(r => {
     const a = r['EntityWorked'] || 'Unknown';
     if (!asgnMap[a]) asgnMap[a] = { over: 0, est: 0, worked: 0, seenTasks: new Set() };
-    if (!asgnMap[a].seenTasks.has(r['TaskID'])) {
+    const _taskWAKey = (r['ObjectTypeID'] || '') + '||' + (r['ProjectID'] || '') + '||' + (r['WA Type'] || '');
+    if (!asgnMap[a].seenTasks.has(_taskWAKey)) {
       asgnMap[a].est += r._est;
-      asgnMap[a].seenTasks.add(r['TaskID']);
+      asgnMap[a].seenTasks.add(_taskWAKey);
     }
     asgnMap[a].worked += r._worked;
     asgnMap[a].over   += r._hasOverage ? r._over : 0;
@@ -657,11 +659,14 @@ function renderProjectBreakdown(projData, projFilter, waFilter) {
     const a = r['EntityWorked'] || 'Unknown';
     if (!byProj[p].assignees[a]) byProj[p].assignees[a] = { over: 0, tasks: 0 };
     byProj[p].assignees[a].tasks++;
-    // Deduplicate est by TaskID — a task may have multiple WA rows but one estimate
+    // Deduplicate est by ObjectTypeID+WAType per project
+    // A project may have multiple TaskIDs per type (e.g. active + waived BPD tasks)
+    // but each WA type should only be counted once per ObjectType
     if (!byProj[p].seenTasks) byProj[p].seenTasks = new Set();
-    if (!byProj[p].seenTasks.has(r['TaskID'])) {
+    const taskWAKey = (r['ObjectTypeID'] || '') + '||' + (r['WA Type'] || '');
+    if (!byProj[p].seenTasks.has(taskWAKey)) {
       byProj[p].est += r._est;
-      byProj[p].seenTasks.add(r['TaskID']);
+      byProj[p].seenTasks.add(taskWAKey);
     }
     byProj[p].worked += r._worked;
     if (r._nullOver) {
@@ -696,7 +701,7 @@ function renderProjectBreakdown(projData, projFilter, waFilter) {
       + '<div class="proj-bar-track"><div class="proj-bar-fill ' + fillCls + '" style="width:' + barPct.toFixed(1) + '%"></div></div>'
       + '<div class="proj-pct">' + pctLabel + '</div>'
       + '<div class="proj-assignees">'
-      + Object.entries(d.assignees).sort((a,b) => b[1].over - a[1].over).map(([name, ad]) => {
+      + Object.entries(d.assignees).filter(([name]) => name && name.toLowerCase() !== 'null').sort((a,b) => b[1].over - a[1].over).map(([name, ad]) => {
           const dotCls = ad.over > 0 ? ' over' : '';
           return '<span class="assignee-chip"><span class="assignee-chip-dot' + dotCls + '"></span>' + name + '</span>';
         }).join('')
