@@ -6,229 +6,193 @@
 <title>Time Overage Analyzer</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg:        #ffffff;
-    --bg2:       #f5f5f3;
-    --bg3:       #eeede9;
-    --text:      #1a1a18;
-    --text2:     #5a5a56;
-    --text3:     #9a9a94;
-    --border:    rgba(0,0,0,0.1);
-    --border2:   rgba(0,0,0,0.18);
-    --red:       #E24B4A;
-    --red-bg:    #FCEBEB;
-    --red-text:  #A32D2D;
-    --amber:     #EF9F27;
-    --amber-bg:  #FAEEDA;
-    --amber-text:#854F0B;
-    --green-bg:  #EAF3DE;
-    --green-text:#3B6D11;
-    --blue:      #3B8BD4;
-    --blue-bg:   #E6F1FB;
-    --blue-text: #185FA5;
-    --purple-bg: #EEEDFE;
-    --purple-text:#534AB7;
-    --radius:    8px;
-    --radius-lg: 12px;
+    --bg:#ffffff; --bg2:#f5f5f3; --bg3:#eeede9; --text:#1a1a18; --text2:#5a5a56; --text3:#9a9a94;
+    --border:rgba(0,0,0,0.1); --border2:rgba(0,0,0,0.18);
+    --red:#E24B4A; --red-bg:#FCEBEB; --red-text:#A32D2D;
+    --amber:#EF9F27; --amber-bg:#FAEEDA; --amber-text:#854F0B;
+    --green-bg:#EAF3DE; --green-text:#3B6D11;
+    --blue:#3B8BD4; --blue-bg:#E6F1FB; --blue-text:#185FA5;
+    --purple-bg:#EEEDFE; --purple-text:#534AB7;
+    --radius:8px; --radius-lg:12px;
   }
-
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg:       #1e1e1c;
-      --bg2:      #2a2a28;
-      --bg3:      #323230;
-      --text:     #e8e8e2;
-      --text2:    #a0a09a;
-      --text3:    #606058;
-      --border:   rgba(255,255,255,0.1);
-      --border2:  rgba(255,255,255,0.18);
-      --red-bg:   #3a1a1a;
-      --red-text: #f09595;
-      --amber-bg: #3a2a10;
-      --amber-text:#FAC775;
-      --green-bg: #1a2a10;
-      --green-text:#C0DD97;
-      --blue-bg:  #0e2440;
-      --blue-text:#85B7EB;
-      --purple-bg:#1e1c40;
-      --purple-text:#AFA9EC;
+      --bg:#1e1e1c; --bg2:#2a2a28; --bg3:#323230; --text:#e8e8e2; --text2:#a0a09a; --text3:#606058;
+      --border:rgba(255,255,255,0.1); --border2:rgba(255,255,255,0.18);
+      --red-bg:#3a1a1a; --red-text:#f09595; --amber-bg:#3a2a10; --amber-text:#FAC775;
+      --green-bg:#1a2a10; --green-text:#C0DD97; --blue-bg:#0e2440; --blue-text:#85B7EB;
+      --purple-bg:#1e1c40; --purple-text:#AFA9EC;
     }
   }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 14px;
-    line-height: 1.5;
-    min-height: 100vh;
-  }
-
-  .app-shell {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 24px 20px 60px;
-  }
-
-  .app-header {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 0.5px solid var(--border);
-  }
-  .app-header h1 { font-size: 20px; font-weight: 600; color: var(--text); }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+  .app-shell { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+  .app-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 0.5px solid var(--border); }
+  .app-header h1 { font-size: 20px; font-weight: 600; }
   .app-header p  { font-size: 13px; color: var(--text2); margin-top: 3px; }
 
-  /* TABS */
   .tabs { display: flex; gap: 2px; border-bottom: 0.5px solid var(--border); margin-bottom: 24px; overflow-x: auto; }
-  .tab {
-    padding: 9px 18px; font-size: 13px; background: none; border: none; cursor: pointer;
-    color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -0.5px;
-    white-space: nowrap; transition: color .15s; font-family: inherit;
-  }
+  .tab { padding: 9px 18px; font-size: 13px; background: none; border: none; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -0.5px; white-space: nowrap; transition: color .15s; font-family: inherit; }
   .tab:hover { color: var(--text); }
   .tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
-
   .panel { display: none; }
   .panel.active { display: block; }
 
-  /* DATA INPUT */
   .input-note { font-size: 13px; color: var(--text2); margin-bottom: 10px; line-height: 1.6; }
   .input-note strong { color: var(--text); }
-  .paste-area {
-    width: 100%; height: 150px;
-    border: 0.5px solid var(--border2); border-radius: var(--radius);
-    padding: 10px 12px; font-size: 12px; font-family: 'SF Mono', 'Consolas', monospace;
-    resize: vertical; background: var(--bg2); color: var(--text);
-    outline: none; transition: border-color .15s;
-  }
+  .paste-area { width: 100%; height: 150px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 10px 12px; font-size: 12px; font-family: 'SF Mono','Consolas',monospace; resize: vertical; background: var(--bg2); color: var(--text); outline: none; }
   .paste-area:focus { border-color: var(--blue); }
   .btn-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
-  .btn {
-    padding: 8px 18px; font-size: 13px; border-radius: var(--radius);
-    cursor: pointer; border: 0.5px solid var(--border2);
-    background: var(--bg); color: var(--text);
-    transition: background .15s; font-family: inherit; font-weight: 500;
-  }
+  .btn { padding: 8px 18px; font-size: 13px; border-radius: var(--radius); cursor: pointer; border: 0.5px solid var(--border2); background: var(--bg); color: var(--text); transition: background .15s; font-family: inherit; font-weight: 500; }
   .btn:hover { background: var(--bg2); }
   .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
   .btn.primary:hover { opacity: 0.82; }
-  .status { font-size: 12px; color: var(--text2); }
+  .status { font-size: 12px; }
   .status.ok  { color: #3B6D11; }
   .status.err { color: var(--red-text); }
 
-  /* METRICS */
-  .metrics {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0,1fr));
-    gap: 10px; margin-bottom: 20px;
-  }
-  @media (max-width: 600px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+  .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 20px; }
+  @media (max-width: 600px) { .metrics { grid-template-columns: repeat(2,1fr); } }
   .metric { background: var(--bg2); border-radius: var(--radius); padding: 14px 16px; }
-  .metric-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-  .metric-value { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1; }
+  .metric-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .metric-value { font-size: 24px; font-weight: 600; line-height: 1; }
   .metric-sub   { font-size: 11px; color: var(--text3); margin-top: 4px; }
 
-  /* FILTERS */
+  /* NET BALANCE */
+  .net-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; margin-bottom: 24px; }
+  @media (max-width: 700px) { .net-grid { grid-template-columns: repeat(2,1fr); } }
+  .net-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .net-card.accent-green { border-color: rgba(99,153,34,.5); }
+  .net-card.accent-red   { border-color: rgba(226,75,74,.5); }
+  .net-card-label { font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+  .net-card-value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .net-card-value.green { color: #3B6D11; }
+  .net-card-value.red   { color: var(--red-text); }
+  .net-card-sub { font-size: 11px; color: var(--text3); margin-top: 5px; }
+  .net-card-bar { height: 3px; border-radius: 99px; margin-top: 10px; background: var(--bg3); overflow: hidden; }
+  .net-card-bar-fill { height: 100%; border-radius: 99px; }
+
   .filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
   .filters label { font-size: 12px; color: var(--text2); white-space: nowrap; }
-  .filters select {
-    font-size: 12px; border: 0.5px solid var(--border2); border-radius: var(--radius);
-    padding: 5px 10px; background: var(--bg); color: var(--text);
-    cursor: pointer; font-family: inherit; outline: none;
-  }
-  .filters select:focus { border-color: var(--blue); }
+  .filters select { font-size: 12px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 5px 10px; background: var(--bg); color: var(--text); cursor: pointer; font-family: inherit; outline: none; }
 
-  /* SECTION TITLE */
-  .section-title {
-    font-size: 11px; font-weight: 600; color: var(--text2);
-    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;
-  }
-
-  /* LEGEND */
+  .section-title { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
   .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; font-size: 12px; color: var(--text2); }
   .legend span { display: flex; align-items: center; gap: 5px; }
   .legend-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-
-  /* CHART */
   .chart-wrap { position: relative; width: 100%; margin-bottom: 28px; }
 
-  /* TABLE */
-  .table-scroll { overflow-x: auto; }
-  .task-table { width: 100%; font-size: 12px; border-collapse: collapse; min-width: 720px; }
-  .task-table th {
-    text-align: left; font-weight: 600; color: var(--text2);
-    padding: 7px 10px; border-bottom: 0.5px solid var(--border2);
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
-    white-space: nowrap; background: var(--bg);
-    position: sticky; top: 0; z-index: 1;
-  }
-  .task-table td {
-    padding: 8px 10px; border-bottom: 0.5px solid var(--border);
-    color: var(--text); vertical-align: middle;
-  }
-  .task-table tr:last-child td { border-bottom: none; }
-  .task-table tbody tr:hover td { background: var(--bg2); }
+  /* PROJECT BREAKDOWN */
+  .proj-breakdown { margin-top: 32px; }
+  .proj-breakdown-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  /* PROJECT GRID & CARDS */
+  .proj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; }
+  .proj-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .proj-card-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 14px; line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-  /* PILLS */
-  .pill {
-    display: inline-block; padding: 2px 9px; border-radius: 99px;
-    font-size: 11px; font-weight: 600; white-space: nowrap;
-  }
+  /* 3-stat row */
+  .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 12px; }
+  .stat-cell { background: var(--bg3); border-radius: 6px; padding: 8px 10px; }
+  .stat-cell-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text2); margin-bottom: 4px; }
+  .stat-cell-val { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stat-cell-val.red { color: #E24B4A; }
+
+  /* progress bar */
+  .proj-bar-track { height: 4px; background: var(--bg3); border-radius: 99px; overflow: hidden; margin-bottom: 4px; }
+  .proj-bar-fill { height: 100%; border-radius: 99px; background: #E24B4A; transition: width .3s; }
+  .proj-bar-fill.ok   { background: #639922; }
+  .proj-bar-fill.warn { background: #EF9F27; }
+  .proj-pct { font-size: 10px; color: var(--text3); text-align: right; margin-bottom: 12px; }
+
+  /* per-person table */
+  .person-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .person-table thead tr { border-bottom: 0.5px solid var(--border2); }
+  .person-table th { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text2); padding: 0 8px 6px; text-align: left; }
+  .person-table th.r { text-align: right; }
+  .person-table td { padding: 5px 8px; color: var(--text2); border-bottom: 0.5px solid var(--border); }
+  .person-table tr:last-child td { border-bottom: none; }
+  .person-table tbody tr:nth-child(even) td { background: var(--bg3); }
+  .person-table td.pname { color: var(--text); font-weight: 500; }
+  .person-table td.r   { text-align: right; }
+  .person-table td.over-td { text-align: right; font-weight: 600; color: #E24B4A; }
+  .person-table td.ok-td   { text-align: right; color: #3B6D11; }
+
+  /* NET BALANCE */
+  .net-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; margin-bottom: 24px; }
+  @media (max-width: 700px) { .net-grid { grid-template-columns: repeat(2,1fr); } }
+  .net-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .net-card.accent-green { border-color: rgba(99,153,34,.5); }
+  .net-card.accent-red   { border-color: rgba(226,75,74,.5); }
+  .net-card-label { font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+  .net-card-value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .net-card-value.green { color: #3B6D11; }
+  .net-card-value.red   { color: var(--red-text); }
+  .net-card-sub { font-size: 11px; color: var(--text3); margin-top: 5px; }
+  .net-card-bar { height: 3px; border-radius: 99px; margin-top: 10px; background: var(--bg3); overflow: hidden; }
+  .net-card-bar-fill { height: 100%; border-radius: 99px; }
+
+  .filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filters label { font-size: 12px; color: var(--text2); white-space: nowrap; }
+  .filters select { font-size: 12px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 5px 10px; background: var(--bg); color: var(--text); cursor: pointer; font-family: inherit; outline: none; }
+
+  .section-title { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; font-size: 12px; color: var(--text2); }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .chart-wrap { position: relative; width: 100%; margin-bottom: 28px; }
+
+  /* PROJECT BREAKDOWN */
+  .proj-breakdown { margin-top: 32px; }
+  .proj-breakdown-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .proj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap: 12px; }
+
+  .proj-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .proj-card-name { font-size: 13px; font-weight: 600; margin-bottom: 12px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* 3-col stat grid */
+  .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 12px; }
+  .stat-cell { background: var(--bg3); border-radius: var(--radius); padding: 8px 10px; }
+  .stat-cell-lbl { font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
+  .stat-cell-val { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stat-cell-val.red { color: var(--red-text); }
+
+  .proj-bar-track { height: 4px; background: var(--bg3); border-radius: 99px; overflow: hidden; margin-bottom: 4px; }
+  .proj-bar-fill { height: 100%; border-radius: 99px; background: var(--red); transition: width .3s; }
+  .proj-bar-fill.ok   { background: #639922; }
+  .proj-bar-fill.warn { background: var(--amber); }
+  .proj-pct { font-size: 10px; color: var(--text3); text-align: right; margin-bottom: 10px; }
+
+  /* Person table */
+  .person-table { width: 100%; border-collapse: collapse; border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .person-table th { background: var(--bg3); font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; padding: 6px 10px; text-align: left; border-bottom: 0.5px solid var(--border); }
+  .person-table th.r { text-align: right; }
+  .person-table td { font-size: 12px; padding: 6px 10px; border-bottom: 0.5px solid var(--border); color: var(--text2); }
+  .person-table tr:last-child td { border-bottom: none; }
+  .person-table tbody tr:nth-child(even) td { background: var(--bg3); }
+  .person-table td.name { color: var(--text); font-weight: 500; }
+  .person-table td.r   { text-align: right; }
+  .person-table td.red { text-align: right; color: var(--red-text); font-weight: 600; }
+  .person-table td.grn { text-align: right; color: #3B6D11; }
+
+  /* PILLS / TABLE */
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; white-space: nowrap; }
   .pill-red    { background: var(--red-bg);    color: var(--red-text); }
   .pill-amber  { background: var(--amber-bg);  color: var(--amber-text); }
   .pill-green  { background: var(--green-bg);  color: var(--green-text); }
   .pill-bpd    { background: var(--blue-bg);   color: var(--blue-text);   font-size: 10px; padding: 1px 7px; }
   .pill-sa     { background: var(--purple-bg); color: var(--purple-text); font-size: 10px; padding: 1px 7px; }
-
+  .table-scroll { overflow-x: auto; }
+  .task-table { width: 100%; font-size: 12px; border-collapse: collapse; min-width: 720px; }
+  .task-table th { text-align: left; font-weight: 600; color: var(--text2); padding: 7px 10px; border-bottom: 0.5px solid var(--border2); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; background: var(--bg); position: sticky; top: 0; z-index: 1; }
+  .task-table td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+  .task-table tr:last-child td { border-bottom: none; }
+  .task-table tbody tr:hover td { background: var(--bg2); }
   .empty { text-align: center; padding: 3rem; color: var(--text3); font-size: 13px; }
-
   .over-val { font-weight: 600; color: var(--red-text); }
   .muted    { color: var(--text2); }
-
-
-  /* PROJECT BREAKDOWN */
-  .proj-breakdown { margin-top: 32px; }
-  .proj-breakdown-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .proj-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 10px;
-  }
-  .proj-card {
-    background: var(--bg2);
-    border: 0.5px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 14px 16px;
-  }
-  .proj-card-name {
-    font-size: 12px; font-weight: 600; color: var(--text);
-    margin-bottom: 10px; line-height: 1.4;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .proj-card-stats {
-    display: flex; gap: 16px; margin-bottom: 10px;
-  }
-  .proj-stat { }
-  .proj-stat-val { font-size: 18px; font-weight: 600; color: var(--text); line-height: 1; }
-  .proj-stat-val.red { color: var(--red-text); }
-  .proj-stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
-  .proj-bar-track {
-    height: 5px; background: var(--bg3); border-radius: 99px; overflow: hidden; margin-top: 6px;
-  }
-  .proj-bar-fill {
-    height: 100%; border-radius: 99px; background: var(--red);
-    transition: width 0.3s ease;
-  }
-  .proj-bar-fill.ok { background: #639922; }
-  .proj-bar-fill.warn { background: var(--amber); }
-  .proj-pct {
-    font-size: 10px; color: var(--text3); margin-top: 4px; text-align: right;
-  }
 </style>
 </head>
 <body>
@@ -237,7 +201,6 @@
     <h1>Time Overage Analyzer</h1>
     <p>Paste tab-separated task export data to analyze overages by assignee, WA type, trend, and task.</p>
   </div>
-
   <div class="tabs">
     <button class="tab active" onclick="showTab('data')">Data Input</button>
     <button class="tab" onclick="showTab('assignee')" id="tab-assignee">By Assignee</button>
@@ -246,9 +209,8 @@
     <button class="tab" onclick="showTab('worst')"    id="tab-worst">Worst Offenders</button>
   </div>
 
-  <!-- DATA INPUT -->
   <div class="panel active" id="panel-data">
-    <p class="input-note">Paste your tab-separated export below, including the header row. Rows where <strong>Over By</strong> is blank or <strong>NULL</strong> are excluded from overage calculations.</p>
+    <p class="input-note">Paste your tab-separated export below, including the header row. Rows where <strong>Over By</strong> is blank or <strong>NULL</strong> are excluded from overage calculations. <strong>Waived</strong> tasks are always excluded.</p>
     <textarea class="paste-area" id="paste-input" placeholder="ProjectName&#9;ProjectID&#9;ObjectTypeID&#9;TaskID&#9;..."></textarea>
     <div class="btn-row">
       <button class="btn primary" onclick="loadData()">Load Data</button>
@@ -257,7 +219,6 @@
     </div>
   </div>
 
-  <!-- BY ASSIGNEE -->
   <div class="panel" id="panel-assignee">
     <div class="metrics" id="metrics-assignee"></div>
     <div id="net-balance-card"></div>
@@ -273,7 +234,6 @@
       <span><span class="legend-sq" style="background:#E24B4A"></span>Over budget hrs</span>
     </div>
     <div class="chart-wrap" id="chart-assignee-wrap"><canvas id="chart-assignee"></canvas></div>
-
     <div class="proj-breakdown">
       <div class="proj-breakdown-header">
         <div class="section-title" style="margin-bottom:0">Project breakdown</div>
@@ -283,7 +243,6 @@
     </div>
   </div>
 
-  <!-- BY WA TYPE -->
   <div class="panel" id="panel-watype">
     <div class="metrics" id="metrics-watype"></div>
     <div class="filters">
@@ -293,21 +252,18 @@
       <select id="filter-asgn-w" onchange="renderWAType()"><option value="">All</option></select>
       <label>Task type:</label>
       <select id="filter-objtype-w" onchange="renderWAType()">
-        <option value="">All</option>
-        <option value="BPD">BPD only</option>
-        <option value="SA">SA only</option>
+        <option value="">All</option><option value="BPD">BPD only</option><option value="SA">SA only</option>
       </select>
     </div>
     <div class="section-title">Overage by work assignment type</div>
     <div class="legend">
-      <span><span class="legend-sq" style="background:#378ADD"></span>BPD total overage</span>
-      <span><span class="legend-sq" style="background:#7F77DD"></span>SA total overage</span>
-      <span><span class="legend-sq" style="background:#EF9F27;opacity:.8"></span>Avg overage/task</span>
+      <span><span class="legend-sq" style="background:#378ADD"></span>BPD overage</span>
+      <span><span class="legend-sq" style="background:#7F77DD"></span>SA overage</span>
+      <span><span class="legend-sq" style="background:#EF9F27;opacity:.8"></span>Avg/task</span>
     </div>
     <div class="chart-wrap" id="chart-watype-wrap"><canvas id="chart-watype"></canvas></div>
   </div>
 
-  <!-- TREND -->
   <div class="panel" id="panel-trend">
     <div class="filters">
       <label>Assignee:</label>
@@ -323,7 +279,6 @@
     <div class="chart-wrap" id="chart-trend-wrap"><canvas id="chart-trend"></canvas></div>
   </div>
 
-  <!-- WORST OFFENDERS -->
   <div class="panel" id="panel-worst">
     <div class="filters">
       <label>Project:</label>
@@ -334,10 +289,7 @@
       <select id="filter-wa-wo" onchange="renderWorst()"><option value="">All</option></select>
       <label>Show top:</label>
       <select id="filter-top-wo" onchange="renderWorst()">
-        <option value="20">20</option>
-        <option value="50">50</option>
-        <option value="100">100</option>
-        <option value="0">All</option>
+        <option value="20">20</option><option value="50">50</option><option value="100">100</option><option value="0">All</option>
       </select>
     </div>
     <div class="section-title">Task-level overage breakdown</div>
@@ -347,629 +299,345 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-let rows = [];
-let charts = {};
+let rows = [], charts = {};
 
-const SAMPLE = `ProjectName\tProjectID\tObjectTypeID\tTaskID\tTaskStatusID\tProject Begin Date\tWA Type\tWorkAssignmentStatusID\tDateAssignmentDue\tTimeEstimate\tTimeWorked\tOver By\tEntityWorked
-Application: General Security Guard Instructor Certificate\t67492\tBusiness Process Design\t635552\tIncomplete\t1/26/2026\tDesign Approval Review Meeting\tCompleted\t3/13/2026\t1\t1.7\t0.7\tvance
-Application: Pharmacy License Renewal\t67501\tBusiness Process Design\t635601\tComplete\t2/1/2026\tRequirements Gathering\tCompleted\t2/15/2026\t3\t4.2\t1.2\tkim
-Application: Pharmacy License Renewal\t67501\tSolutions Analysis\t635602\tComplete\t2/1/2026\tData Mapping Review\tCompleted\t2/20/2026\t2\t2.8\t0.8\tvance
-Application: General Security Guard Instructor Certificate\t67492\tSolutions Analysis\t635553\tIncomplete\t1/26/2026\tGap Analysis\tIn Progress\t3/20/2026\t4\t5.1\tNULL\tjordan
-Application: Cosmetology School Renewal\t67512\tBusiness Process Design\t635700\tIncomplete\t1/15/2026\tStakeholder Review\tCompleted\t2/28/2026\t2\t3.5\t1.5\tkim
-Application: Cosmetology School Renewal\t67512\tBusiness Process Design\t635701\tComplete\t1/15/2026\tWorkflow Design\tCompleted\t3/5/2026\t5\t5.0\t0\tjordan
-Application: Cosmetology School Renewal\t67512\tSolutions Analysis\t635702\tComplete\t1/15/2026\tIntegration Analysis\tCompleted\t3/10/2026\t3\t4.8\t1.8\tvance
-Application: Electrical Contractor License\t67530\tBusiness Process Design\t635800\tIncomplete\t2/10/2026\tDesign Approval Review Meeting\tCompleted\t3/15/2026\t1\t2.1\t1.1\tkim
-Application: Electrical Contractor License\t67530\tSolutions Analysis\t635801\tIncomplete\t2/10/2026\tData Mapping Review\tIn Progress\t3/25/2026\t2\t2.5\tNULL\tvance
-Application: Pharmacy License Renewal\t67501\tBusiness Process Design\t635603\tIncomplete\t2/1/2026\tWorkflow Design\tCompleted\t3/8/2026\t4\t6.2\t2.2\tjordan
-Application: General Security Guard Instructor Certificate\t67492\tBusiness Process Design\t635554\tComplete\t1/26/2026\tRequirements Gathering\tCompleted\t2/20/2026\t3\t3.0\t0\tkim
-Application: Electrical Contractor License\t67530\tBusiness Process Design\t635802\tIncomplete\t2/10/2026\tStakeholder Review\tIn Progress\t4/1/2026\t2\t2.8\t0.8\tjordan`;
+const SAMPLE = "ProjectName\tProjectID\tObjectTypeID\tTaskID\tTaskStatusID\tProject Begin Date\tWA Type\tWorkAssignmentStatusID\tDateAssignmentDue\tTimeEstimate\tTimeWorked\tOver By\tEntityWorked\nApplication: General Security Guard Instructor Certificate\t67492\tBusiness Process Design\t635552\tIncomplete\t1/26/2026\tDesign Approval Review Meeting\tCompleted\t3/13/2026\t1\t1.7\t0.7\tvance\nApplication: Pharmacy License Renewal\t67501\tBusiness Process Design\t635601\tComplete\t2/1/2026\tRequirements Gathering\tCompleted\t2/15/2026\t3\t4.2\t1.2\tkim\nApplication: Pharmacy License Renewal\t67501\tSolutions Analysis\t635602\tComplete\t2/1/2026\tData Mapping Review\tCompleted\t2/20/2026\t2\t2.8\t0.8\tvance\nApplication: General Security Guard Instructor Certificate\t67492\tSolutions Analysis\t635553\tIncomplete\t1/26/2026\tGap Analysis\tIn Progress\t3/20/2026\t4\t5.1\tNULL\tjordan\nApplication: Cosmetology School Renewal\t67512\tBusiness Process Design\t635700\tIncomplete\t1/15/2026\tStakeholder Review\tCompleted\t2/28/2026\t2\t3.5\t1.5\tkim\nApplication: Cosmetology School Renewal\t67512\tBusiness Process Design\t635701\tComplete\t1/15/2026\tWorkflow Design\tCompleted\t3/5/2026\t5\t5.0\t0\tjordan\nApplication: Cosmetology School Renewal\t67512\tSolutions Analysis\t635702\tComplete\t1/15/2026\tIntegration Analysis\tCompleted\t3/10/2026\t3\t4.8\t1.8\tvance\nApplication: Electrical Contractor License\t67530\tBusiness Process Design\t635800\tIncomplete\t2/10/2026\tDesign Approval Review Meeting\tCompleted\t3/15/2026\t1\t2.1\t1.1\tkim\nApplication: Electrical Contractor License\t67530\tSolutions Analysis\t635801\tIncomplete\t2/10/2026\tData Mapping Review\tIn Progress\t3/25/2026\t2\t2.5\tNULL\tvance\nApplication: Pharmacy License Renewal\t67501\tBusiness Process Design\t635603\tIncomplete\t2/1/2026\tWorkflow Design\tCompleted\t3/8/2026\t4\t6.2\t2.2\tjordan\nApplication: General Security Guard Instructor Certificate\t67492\tBusiness Process Design\t635554\tComplete\t1/26/2026\tRequirements Gathering\tCompleted\t2/20/2026\t3\t3.0\t0\tkim\nApplication: Electrical Contractor License\t67530\tBusiness Process Design\t635802\tIncomplete\t2/10/2026\tStakeholder Review\tIn Progress\t4/1/2026\t2\t2.8\t0.8\tjordan";
 
-function isNullOver(val) {
-  if (val === undefined || val === null) return true;
-  const s = String(val).trim().toLowerCase();
-  return s === '' || s === 'null';
-}
+const isNullOver = v => { if (!v && v !== 0) return true; const s = String(v).trim().toLowerCase(); return s === '' || s === 'null'; };
+const getPrefix  = t => { const s = (t||'').toLowerCase(); return s.includes('business process')||s.includes('bpd') ? 'BPD' : s.includes('solutions')||s.includes(' sa') ? 'SA' : ''; };
+const waLabel    = r => { const p = getPrefix(r['ObjectTypeID']); return p ? p + ' \u2013 ' + (r['WA Type']||'') : (r['WA Type']||''); };
 
-function getObjTypePrefix(objTypeID) {
-  const s = (objTypeID || '').toLowerCase();
-  if (s.includes('business process') || s.includes('bpd')) return 'BPD';
-  if (s.includes('solutions analysis') || s.includes('sa')) return 'SA';
-  return '';
-}
-
-function labeledWAType(r) {
-  const prefix = getObjTypePrefix(r['ObjectTypeID']);
-  const wa = r['WA Type'] || '';
-  return prefix ? `${prefix} \u2013 ${wa}` : wa;
-}
-
-function loadSample() {
-  document.getElementById('paste-input').value = SAMPLE;
-  loadData();
-}
+function loadSample() { document.getElementById('paste-input').value = SAMPLE; loadData(); }
 
 function loadData() {
   const raw = document.getElementById('paste-input').value.trim();
-  const statusEl = document.getElementById('load-status');
-  if (!raw) { statusEl.className = 'status err'; statusEl.textContent = 'Nothing to load.'; return; }
-  const lines = raw.split('\n').filter(l => l.trim());
-  if (lines.length < 2) { statusEl.className = 'status err'; statusEl.textContent = 'Need at least a header + 1 row.'; return; }
-
-  const headers = lines[0].split('\t').map(h => h.trim());
-  const parsed = [];
-  let nullCount = 0;
-
+  const el  = document.getElementById('load-status');
+  if (!raw) { el.className='status err'; el.textContent='Nothing to load.'; return; }
+  const lines = raw.split('\n').filter(l=>l.trim());
+  if (lines.length < 2) { el.className='status err'; el.textContent='Need header + data rows.'; return; }
+  const headers = lines[0].split('\t').map(h=>h.trim());
+  const parsed = []; let nulls = 0;
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split('\t');
-    const obj = {};
-    headers.forEach((h, idx) => obj[h] = (cols[idx] || '').trim());
-
-    const overRaw = obj['Over By'];
-    obj._nullOver = isNullOver(overRaw);
-    if (obj._nullOver) nullCount++;
-
-    obj._est    = parseFloat(obj['TimeEstimate']) || 0;
-    obj._worked = parseFloat(obj['TimeWorked'])   || 0;
-    obj._over   = obj._nullOver ? null : (parseFloat(overRaw) || 0);
-    obj._hasOverage = obj._over !== null && obj._over > 0;
-    obj._waLabel = labeledWAType(obj);
-
-    if (obj['DateAssignmentDue']) {
-      const d = new Date(obj['DateAssignmentDue']);
-      obj._month = isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    } else { obj._month = ''; }
-
-    parsed.push(obj);
+    const o = {}; headers.forEach((h,j) => o[h]=(cols[j]||'').trim());
+    o._nullOver = isNullOver(o['Over By']); if (o._nullOver) nulls++;
+    o._est = parseFloat(o['TimeEstimate'])||0;
+    o._worked = parseFloat(o['TimeWorked'])||0;
+    o._over = o._nullOver ? null : (parseFloat(o['Over By'])||0);
+    o._hasOverage = o._over !== null && o._over > 0;
+    o._waLabel = waLabel(o);
+    const d = new Date(o['DateAssignmentDue']);
+    o._month = isNaN(d.getTime()) ? '' : d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    parsed.push(o);
   }
-
   rows = parsed;
-  const excluded = nullCount > 0 ? ` (${nullCount} NULL/blank Over By excluded)` : '';
-  statusEl.className = 'status ok';
-  statusEl.textContent = `Loaded ${rows.length} rows${excluded}.`;
-
+  el.className='status ok'; el.textContent='Loaded '+rows.length+' rows'+(nulls?' ('+nulls+' NULL excluded)':'')+ '.';
   populateFilters();
   renderAssignee(); renderWAType(); renderTrend(); renderWorst();
 }
 
-function getUnique(field) {
-  return [...new Set(rows.map(r => r[field]).filter(Boolean))].sort();
-}
-function getUniqueWALabels() {
-  return [...new Set(rows.map(r => r._waLabel).filter(Boolean))].sort();
-}
+function getUnique(f)  { return [...new Set(rows.map(r=>r[f]).filter(Boolean))].sort(); }
+function getUniqueWA() { return [...new Set(rows.map(r=>r._waLabel).filter(Boolean))].sort(); }
 
 function populateFilters() {
-  const projects  = getUnique('ProjectName');
-  const assignees = getUnique('EntityWorked');
-  const waLabels  = getUniqueWALabels();
-
-  function fillSelect(id, vals) {
-    const el = document.getElementById(id); if (!el) return;
-    const prev = el.value;
-    el.innerHTML = '<option value="">All</option>' + vals.map(v => `<option value="${v}"${v === prev ? ' selected' : ''}>${v}</option>`).join('');
-  }
-  fillSelect('filter-proj-a',  projects);
-  fillSelect('filter-wa-a',    waLabels);
-  fillSelect('filter-proj-w',  projects);
-  fillSelect('filter-asgn-w',  assignees);
-  fillSelect('filter-asgn-t',  assignees);
-  fillSelect('filter-wa-t',    waLabels);
-  fillSelect('filter-proj-wo', projects);
-  fillSelect('filter-asgn-wo', assignees);
-  fillSelect('filter-wa-wo',   waLabels);
+  const P=getUnique('ProjectName'), A=getUnique('EntityWorked'), W=getUniqueWA();
+  function fill(id,vals) { const el=document.getElementById(id); if(!el) return; const prev=el.value; el.innerHTML='<option value="">All</option>'+vals.map(v=>'<option value="'+v+'"'+(v===prev?' selected':'')+'>'+v+'</option>').join(''); }
+  ['filter-proj-a','filter-proj-w','filter-proj-wo'].forEach(id=>fill(id,P));
+  ['filter-asgn-w','filter-asgn-t','filter-asgn-wo'].forEach(id=>fill(id,A));
+  ['filter-wa-a','filter-wa-t','filter-wa-wo'].forEach(id=>fill(id,W));
 }
 
-function filterRows(projId, asgnId, waLabel, objTypeFilter) {
+function filterRows(proj,asgn,wa,objType) {
   return rows.filter(r =>
-    (r['TaskStatusID'] || '').toLowerCase() !== 'waived' &&
-    (!projId       || r['ProjectName']  === projId) &&
-    (!asgnId       || r['EntityWorked'] === asgnId) &&
-    (!waLabel      || r._waLabel        === waLabel) &&
-    (!objTypeFilter || getObjTypePrefix(r['ObjectTypeID']) === objTypeFilter)
+    (r['TaskStatusID']||'').toLowerCase() !== 'waived' &&
+    (!proj    || r['ProjectName']===proj) &&
+    (!asgn    || r['EntityWorked']===asgn) &&
+    (!wa      || r._waLabel===wa) &&
+    (!objType || getPrefix(r['ObjectTypeID'])===objType)
   );
 }
 
 function metricCards(id, cards) {
   document.getElementById(id).innerHTML = cards.map(c =>
-    `<div class="metric">
-      <div class="metric-label">${c.label}</div>
-      <div class="metric-value">${c.value}</div>
-      ${c.sub ? `<div class="metric-sub">${c.sub}</div>` : ''}
-    </div>`
+    '<div class="metric"><div class="metric-label">'+c.label+'</div><div class="metric-value">'+c.value+'</div>'+(c.sub?'<div class="metric-sub">'+c.sub+'</div>':'')+'</div>'
   ).join('');
 }
 
-function destroyChart(id) {
-  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
-}
+function destroyChart(id) { if(charts[id]){charts[id].destroy();delete charts[id];} }
+const isDark=()=>window.matchMedia('(prefers-color-scheme: dark)').matches;
+const gridC=()=>isDark()?'rgba(255,255,255,.07)':'rgba(0,0,0,.07)';
+const tickC=()=>isDark()?'#a0a09a':'#5a5a56';
 
-const isDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
-const gridColor = () => isDark() ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
-const tickColor = () => isDark() ? '#a0a09a' : '#5a5a56';
-
+// ── ASSIGNEE ──────────────────────────────────────────────────────────────────
 function renderAssignee() {
-  const proj = document.getElementById('filter-proj-a')?.value || '';
-  const wa   = document.getElementById('filter-wa-a')?.value  || '';
-  const data = filterRows(proj, '', wa, '');
-  const accountable = data.filter(r => !r._nullOver);
-  const overData    = accountable.filter(r => r._hasOverage);
-
-  const totalOver = overData.reduce((s, r) => s + r._over, 0);
-  const totalEst  = accountable.reduce((s, r) => s + r._est, 0);
-  const pct = totalEst > 0 ? ((totalOver / totalEst) * 100).toFixed(1) : 0;
-  const topMap = {};
-  overData.forEach(r => { topMap[r['EntityWorked']] = (topMap[r['EntityWorked']] || 0) + r._over; });
-  const topAsgn = Object.entries(topMap).sort((a, b) => b[1] - a[1])[0];
-
-  metricCards('metrics-assignee', [
-    { label: 'Total overage (hrs)', value: totalOver.toFixed(1) },
-    { label: 'Tasks over budget',   value: overData.length, sub: `of ${accountable.length} accounted` },
-    { label: 'Overage %',           value: pct + '%', sub: 'of total estimated' },
-    { label: 'Top offender',        value: topAsgn ? topAsgn[0] : '—', sub: topAsgn ? topAsgn[1].toFixed(1) + ' hrs over' : '' }
+  const proj=document.getElementById('filter-proj-a')?.value||'';
+  const wa  =document.getElementById('filter-wa-a')?.value||'';
+  const data=filterRows(proj,'',wa,'');
+  const acc =data.filter(r=>!r._nullOver);
+  const over=acc.filter(r=>r._hasOverage);
+  const totOver=over.reduce((s,r)=>s+r._over,0);
+  const totEst =acc.reduce((s,r)=>s+r._est,0);
+  const pct=totEst>0?((totOver/totEst)*100).toFixed(1):0;
+  const tm={}; over.forEach(r=>{tm[r['EntityWorked']]=(tm[r['EntityWorked']]||0)+r._over;});
+  const top=Object.entries(tm).sort((a,b)=>b[1]-a[1])[0];
+  metricCards('metrics-assignee',[
+    {label:'Total overage (hrs)',value:totOver.toFixed(1)},
+    {label:'Tasks over budget',value:over.length,sub:'of '+acc.length+' accounted'},
+    {label:'Overage %',value:pct+'%',sub:'of total estimated'},
+    {label:'Top offender',value:top?top[0]:'—',sub:top?top[1].toFixed(1)+' hrs over':''}
   ]);
+  renderNetBalance(acc);
 
-  renderNetBalance(accountable);
-
-  const asgnMap = {};
-  accountable.forEach(r => {
-    const a = r['EntityWorked'] || 'Unknown';
-    if (!asgnMap[a]) asgnMap[a] = { over: 0, est: 0, worked: 0, seenTasks: new Set() };
-    const _taskWAKey = (r['ObjectTypeID'] || '') + '||' + (r['ProjectID'] || '') + '||' + (r['WA Type'] || '');
-    if (!asgnMap[a].seenTasks.has(_taskWAKey)) {
-      asgnMap[a].est += r._est;
-      asgnMap[a].seenTasks.add(_taskWAKey);
-    }
-    asgnMap[a].worked += r._worked;
-    asgnMap[a].over   += r._hasOverage ? r._over : 0;
+  const am={};
+  acc.forEach(r=>{
+    const a=r['EntityWorked']||'Unknown';
+    if(!am[a]) am[a]={over:0,est:0,worked:0,seen:new Set()};
+    const k=(r['ObjectTypeID']||'')+'|'+(r['ProjectID']||'')+'|'+(r['WA Type']||'');
+    if(!am[a].seen.has(k)){am[a].est+=r._est;am[a].seen.add(k);}
+    am[a].worked+=r._worked;
+    am[a].over+=r._hasOverage?r._over:0;
   });
-
-  const sorted   = Object.entries(asgnMap).sort((a, b) => b[1].over - a[1].over);
-  const labels   = sorted.map(x => x[0]);
-  const overVals   = sorted.map(x => parseFloat(x[1].over.toFixed(2)));
-  const estVals    = sorted.map(x => parseFloat(x[1].est.toFixed(2)));
-  // Also track worked hrs per assignee
-  const workedVals = sorted.map(x => parseFloat(x[1].worked.toFixed(2)));
+  const sorted=Object.entries(am).sort((a,b)=>b[1].over-a[1].over);
+  const labels=sorted.map(x=>x[0]);
+  const eVals =sorted.map(x=>parseFloat(x[1].est.toFixed(2)));
+  const wVals =sorted.map(x=>parseFloat(x[1].worked.toFixed(2)));
+  const oVals =sorted.map(x=>parseFloat(x[1].over.toFixed(2)));
 
   destroyChart('assignee');
-  const wrap = document.getElementById('chart-assignee-wrap');
-  const rowH = 52;
-  wrap.style.height = Math.max(200, labels.length * rowH + 60) + 'px';
-
-  // Draw custom canvas: est track + worked bar + overage marker
-  const canvas = document.getElementById('chart-assignee');
-  const dpr = window.devicePixelRatio || 1;
-  const W = canvas.parentElement.clientWidth;
-  const H = Math.max(200, labels.length * rowH + 60);
-  canvas.width  = W * dpr;
-  canvas.height = H * dpr;
-  canvas.style.width  = W + 'px';
-  canvas.style.height = H + 'px';
-  const c = canvas.getContext('2d');
-  c.scale(dpr, dpr);
-
-  const dark = isDark();
-  const PAD_L = 110, PAD_R = 60, PAD_T = 20, PAD_B = 30;
-  const chartW = W - PAD_L - PAD_R;
-  const maxVal = Math.max(...estVals, ...workedVals) * 1.1 || 1;
-  const toX = v => PAD_L + (v / maxVal) * chartW;
-
-  // Grid lines
-  const ticks = 5;
-  c.textAlign = 'center';
-  c.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
-  c.fillStyle = dark ? '#a0a09a' : '#5a5a56';
-  for (let i = 0; i <= ticks; i++) {
-    const v = (maxVal / ticks) * i;
-    const x = toX(v);
-    c.strokeStyle = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-    c.lineWidth = 1;
-    c.beginPath(); c.moveTo(x, PAD_T); c.lineTo(x, H - PAD_B); c.stroke();
-    c.fillText(v.toFixed(1), x, H - PAD_B + 14);
+  const wrap=document.getElementById('chart-assignee-wrap');
+  const rowH=52, PAD_L=110, PAD_R=120, PAD_T=20, PAD_B=30;
+  const H=Math.max(200,labels.length*rowH+60);
+  wrap.style.height=H+'px';
+  const canvas=document.getElementById('chart-assignee');
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const c=canvas.getContext('2d'); c.scale(dpr,dpr);
+  const dark=isDark();
+  const maxV=Math.max(...eVals,...wVals)*1.1||1;
+  const toX=v=>PAD_L+(v/maxV)*(W-PAD_L-PAD_R);
+  for(let i=0;i<=5;i++){
+    const x=toX((maxV/5)*i);
+    c.strokeStyle=dark?'rgba(255,255,255,.06)':'rgba(0,0,0,.06)'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(x,PAD_T); c.lineTo(x,H-PAD_B); c.stroke();
+    c.textAlign='center'; c.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
+    c.fillStyle=tickC(); c.fillText(((maxV/5)*i).toFixed(1),x,H-PAD_B+14);
   }
-
-  labels.forEach((lbl, i) => {
-    const cy = PAD_T + i * rowH + rowH / 2;
-    const est    = estVals[i];
-    const worked = workedVals[i];
-    const over   = overVals[i];
-
-    // Row label
-    c.textAlign = 'right';
-    c.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
-    c.fillStyle = dark ? '#e8e8e2' : '#1a1a18';
-    c.fillText(lbl, PAD_L - 10, cy + 4);
-
-    // Estimated track (thin full-width ghost bar)
-    const estX = toX(est);
-    c.fillStyle = dark ? 'rgba(179,212,244,0.18)' : 'rgba(55,138,221,0.12)';
-    const trackH = 6;
-    const r2 = 3;
-    c.beginPath();
-    c.roundRect(PAD_L, cy - trackH/2, estX - PAD_L, trackH, r2);
-    c.fill();
-
-    // Worked bar (solid, taller)
-    const workedX = toX(worked);
-    const barH = 18;
-    const overColor = over > 0;
-    c.fillStyle = overColor ? '#E24B4A' : (dark ? '#378ADD' : '#3B8BD4');
-    c.globalAlpha = overColor ? 1 : 0.75;
-    c.beginPath();
-    c.roundRect(PAD_L, cy - barH/2, workedX - PAD_L, barH, 3);
-    c.fill();
-    c.globalAlpha = 1;
-
-    // Estimated marker line (vertical tick)
-    c.strokeStyle = dark ? 'rgba(179,212,244,0.7)' : 'rgba(55,138,221,0.8)';
-    c.lineWidth = 2;
-    c.beginPath(); c.moveTo(estX, cy - 12); c.lineTo(estX, cy + 12); c.stroke();
-
-    // Value labels
-    c.textAlign = 'left';
-    c.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
-    const labelX = Math.max(workedX, estX) + 7;
-    if (over > 0) {
-      c.fillStyle = '#E24B4A';
-      c.fillText('+' + over.toFixed(1) + ' over', labelX, cy + 4);
-    } else {
-      c.fillStyle = dark ? '#a0a09a' : '#5a5a56';
-      c.fillText(worked.toFixed(1) + ' / ' + est.toFixed(1), labelX, cy + 4);
-    }
+  labels.forEach((lbl,i)=>{
+    const cy=PAD_T+i*rowH+rowH/2;
+    const est=eVals[i],wkd=wVals[i],ov=oVals[i];
+    c.textAlign='right'; c.font='12px -apple-system,BlinkMacSystemFont,sans-serif';
+    c.fillStyle=dark?'#e8e8e2':'#1a1a18'; c.fillText(lbl,PAD_L-10,cy+4);
+    c.fillStyle=dark?'rgba(179,212,244,.18)':'rgba(55,138,221,.12)';
+    c.beginPath(); c.roundRect(PAD_L,cy-3,toX(est)-PAD_L,6,3); c.fill();
+    c.fillStyle=ov>0?'#E24B4A':'#3B8BD4'; c.globalAlpha=ov>0?1:.75;
+    c.beginPath(); c.roundRect(PAD_L,cy-9,toX(wkd)-PAD_L,18,3); c.fill(); c.globalAlpha=1;
+    c.strokeStyle=dark?'rgba(179,212,244,.7)':'rgba(55,138,221,.8)'; c.lineWidth=2;
+    c.beginPath(); c.moveTo(toX(est),cy-12); c.lineTo(toX(est),cy+12); c.stroke();
+    c.textAlign='left'; c.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
+    const lx=Math.max(toX(wkd),toX(est))+7;
+    if(ov>0){c.fillStyle='#E24B4A';c.fillText('+'+ov.toFixed(1)+' over',lx,cy+4);}
+    else{c.fillStyle=tickC();c.fillText(wkd.toFixed(1)+' / '+est.toFixed(1),lx,cy+4);}
   });
-
-  // Legend
-  const legY = H - 6;
-  c.textAlign = 'left';
-  c.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
-  c.fillStyle = dark ? '#a0a09a' : '#5a5a56';
-  // estimated tick
-  c.strokeStyle = dark ? 'rgba(179,212,244,0.7)' : 'rgba(55,138,221,0.8)';
-  c.lineWidth = 2;
-  c.beginPath(); c.moveTo(PAD_L, legY - 6); c.lineTo(PAD_L, legY + 2); c.stroke();
-  c.fillText('estimated', PAD_L + 5, legY);
-  // worked bar swatch
-  c.fillStyle = dark ? '#378ADD' : '#3B8BD4';
-  c.globalAlpha = 0.75;
-  c.fillRect(PAD_L + 80, legY - 5, 10, 7);
-  c.globalAlpha = 1;
-  c.fillStyle = dark ? '#a0a09a' : '#5a5a56';
-  c.fillText('logged', PAD_L + 93, legY);
-  // over swatch
-  c.fillStyle = '#E24B4A';
-  c.fillRect(PAD_L + 145, legY - 5, 10, 7);
-  c.fillStyle = dark ? '#a0a09a' : '#5a5a56';
-  c.fillText('over budget', PAD_L + 158, legY);
-
-  charts['assignee'] = null; // canvas drawn manually, no Chart.js instance needed
-
-  renderProjectBreakdown(data, proj, wa);
+  charts['assignee']=null;
+  renderProjectBreakdown(data,proj,wa);
 }
 
-function renderNetBalance(accountable) {
-  const el = document.getElementById('net-balance-card');
-  if (!el) return;
-
-  // Compute totals — deduplicate est by ObjectTypeID+ProjectID+WAType
-  const seenEst = new Set();
-  let totalEst = 0, totalWorked = 0, totalSaved = 0, totalLost = 0;
-  let tasksSaved = 0, tasksLost = 0, tasksOnBudget = 0;
-
-  accountable.forEach(r => {
-    const key = (r['ObjectTypeID'] || '') + '||' + (r['ProjectID'] || '') + '||' + (r['WA Type'] || '');
-    if (!seenEst.has(key)) { totalEst += r._est; seenEst.add(key); }
-    totalWorked += r._worked;
-    if (r._hasOverage) {
-      totalLost += r._over;
-      tasksLost++;
-    } else if (r._over === 0) {
-      tasksOnBudget++;
-    } else {
-      // under budget: saved = est - worked (but only for rows where over = 0 exactly or slightly under)
-    }
+// ── NET BALANCE ───────────────────────────────────────────────────────────────
+function renderNetBalance(acc) {
+  const el=document.getElementById('net-balance-card'); if(!el) return;
+  const seen=new Set(); let totEst=0,totWorked=0,tasksLost=0;
+  const pEst={},pWorked={};
+  acc.forEach(r=>{
+    const k=(r['ObjectTypeID']||'')+'|'+(r['ProjectID']||'')+'|'+(r['WA Type']||'');
+    if(!seen.has(k)){totEst+=r._est;seen.add(k);pEst[k]=r._est;}
+    totWorked+=r._worked; pWorked[k]=(pWorked[k]||0)+r._worked;
+    if(r._hasOverage) tasksLost++;
   });
-
-  // Saved = sum of (est - worked) for tasks that came in under or on budget
-  // Use worked vs est per WA type per project (deduped est)
-  const projWAEst = {};
-  const projWAWorked = {};
-  accountable.forEach(r => {
-    const key = (r['ObjectTypeID'] || '') + '||' + (r['ProjectID'] || '') + '||' + (r['WA Type'] || '');
-    if (!projWAEst[key]) projWAEst[key] = r._est;
-    projWAWorked[key] = (projWAWorked[key] || 0) + r._worked;
-  });
-
-  Object.entries(projWAEst).forEach(([key, est]) => {
-    const worked = projWAWorked[key] || 0;
-    const diff = est - worked;
-    if (diff > 0) { totalSaved += diff; tasksSaved++; }
-    else if (diff < 0) { /* already counted in totalLost via Over By */ }
-  });
-
-  const net = totalSaved - totalLost;
-  const netCls = net > 0 ? 'positive' : net < 0 ? 'negative' : 'neutral';
-  const netSign = net > 0 ? '+' : '';
-  const netLabel = net > 0 ? 'hrs ahead of schedule' : net < 0 ? 'hrs behind schedule' : 'exactly on schedule';
-
-  // Scale bars — max height 56px
-  const maxVal = Math.max(totalEst, totalWorked, 0.01);
-  const estH    = Math.round((totalEst    / maxVal) * 56);
-  const workedH = Math.round((totalWorked / maxVal) * 56);
-  const savedH  = Math.round((totalSaved  / maxVal) * 56);
-  const lostH   = Math.round((totalLost   / maxVal) * 56);
-  const netH    = Math.round((Math.abs(net) / maxVal) * 56);
-
-  el.innerHTML = `
-    <div class="net-balance-card">
-      <div class="net-balance-header">
-        <div class="net-balance-title">Net time balance</div>
-        <div class="net-balance-result">
-          <span class="net-balance-num ${netCls}">${netSign}${Math.abs(net).toFixed(1)}</span>
-          <span class="net-balance-label">${netLabel}</span>
-        </div>
-      </div>
-      <div class="net-waterfall">
-        <div class="wf-col">
-          <div class="wf-bar-wrap"><div class="wf-bar est" style="height:${estH}px"></div></div>
-          <div class="wf-val">${totalEst.toFixed(1)}</div>
-          <div class="wf-key">Estimated</div>
-        </div>
-        <div class="wf-divider"></div>
-        <div class="wf-col">
-          <div class="wf-bar-wrap"><div class="wf-bar saved" style="height:${savedH}px"></div></div>
-          <div class="wf-val" style="color:#3B6D11">−${totalSaved.toFixed(1)}</div>
-          <div class="wf-key">Saved</div>
-        </div>
-        <div class="wf-col">
-          <div class="wf-bar-wrap"><div class="wf-bar lost" style="height:${lostH}px"></div></div>
-          <div class="wf-val" style="color:var(--red-text)">+${totalLost.toFixed(1)}</div>
-          <div class="wf-key">Lost</div>
-        </div>
-        <div class="wf-divider"></div>
-        <div class="wf-col">
-          <div class="wf-bar-wrap"><div class="wf-bar ${net >= 0 ? 'net-pos' : 'net-neg'}" style="height:${netH}px"></div></div>
-          <div class="wf-val" style="color:${net >= 0 ? '#3B6D11' : 'var(--red-text)'}">${netSign}${net.toFixed(1)}</div>
-          <div class="wf-key">Net</div>
-        </div>
-      </div>
-      <div class="net-balance-row">
-        <div class="net-stat">
-          <div class="net-stat-val">${totalEst.toFixed(1)}</div>
-          <div class="net-stat-lbl">Total estimated</div>
-        </div>
-        <div class="net-stat">
-          <div class="net-stat-val">${totalWorked.toFixed(1)}</div>
-          <div class="net-stat-lbl">Total logged</div>
-        </div>
-        <div class="net-stat">
-          <div class="net-stat-val g">−${totalSaved.toFixed(1)}</div>
-          <div class="net-stat-lbl">Time saved (${tasksSaved} WAs)</div>
-        </div>
-        <div class="net-stat">
-          <div class="net-stat-val r">+${totalLost.toFixed(1)}</div>
-          <div class="net-stat-lbl">Time lost (${tasksLost} WAs)</div>
-        </div>
-        <div class="net-stat">
-          <div class="net-stat-val ${netCls === 'positive' ? 'g' : netCls === 'negative' ? 'r' : ''}">${netSign}${net.toFixed(1)}</div>
-          <div class="net-stat-lbl">Net balance</div>
-        </div>
-      </div>
-    </div>`;
+  let saved=0,lost=0,tasksSaved=0;
+  Object.entries(pEst).forEach(([k,e])=>{const w=pWorked[k]||0,d=e-w;if(d>0){saved+=d;tasksSaved++;}else if(d<0){lost+=Math.abs(d);}});
+  const net=saved-lost, ns=net>0?'+':'', nl=net>0?'ahead of schedule':net<0?'behind schedule':'on schedule';
+  const nc=net>=0?'#3B6D11':'var(--red-text)';
+  const b=v=>totEst>0?Math.min(100,Math.round((v/totEst)*100)):0;
+  el.innerHTML='<div class="net-grid">'
+    +'<div class="net-card"><div class="net-card-label">Total Estimated</div><div class="net-card-value">'+totEst.toFixed(1)+'<span style="font-size:13px;font-weight:400;color:var(--text3);margin-left:3px">hrs</span></div><div class="net-card-sub">'+seen.size+' WA types</div></div>'
+    +'<div class="net-card"><div class="net-card-label">Total Logged</div><div class="net-card-value">'+totWorked.toFixed(1)+'<span style="font-size:13px;font-weight:400;color:var(--text3);margin-left:3px">hrs</span></div><div class="net-card-bar"><div class="net-card-bar-fill" style="width:'+b(totWorked)+'%;background:#378ADD"></div></div></div>'
+    +'<div class="net-card accent-green"><div class="net-card-label">Time Saved</div><div class="net-card-value green">\u2212'+saved.toFixed(1)+'<span style="font-size:13px;font-weight:400;color:var(--text3);margin-left:3px">hrs</span></div><div class="net-card-sub">'+tasksSaved+' WAs under budget</div><div class="net-card-bar"><div class="net-card-bar-fill" style="width:'+b(saved)+'%;background:#639922"></div></div></div>'
+    +'<div class="net-card accent-red"><div class="net-card-label">Time Lost</div><div class="net-card-value red">+'+lost.toFixed(1)+'<span style="font-size:13px;font-weight:400;color:var(--text3);margin-left:3px">hrs</span></div><div class="net-card-sub">'+tasksLost+' WAs over budget</div><div class="net-card-bar"><div class="net-card-bar-fill" style="width:'+b(lost)+'%;background:#E24B4A"></div></div></div>'
+    +'<div class="net-card '+(net>=0?'accent-green':'accent-red')+'"><div class="net-card-label">Net Balance</div><div class="net-card-value" style="color:'+nc+'">'+ns+net.toFixed(1)+'<span style="font-size:13px;font-weight:400;color:var(--text3);margin-left:3px">hrs</span></div><div class="net-card-sub">'+nl+'</div><div class="net-card-bar"><div class="net-card-bar-fill" style="width:'+b(Math.abs(net))+'%;background:'+(net>=0?'#639922':'#E24B4A')+'"></div></div></div>'
+    +'</div>';
 }
 
-
+// ── PROJECT BREAKDOWN ─────────────────────────────────────────────────────────
 function renderProjectBreakdown(projData, projFilter, waFilter) {
-  const grid = document.getElementById('proj-breakdown-grid');
-  const ctx  = document.getElementById('proj-breakdown-context');
-
+  const grid  = document.getElementById('proj-breakdown-grid');
+  const ctxEl = document.getElementById('proj-breakdown-context');
   const parts = [];
   if (waFilter)   parts.push(waFilter);
   if (projFilter) parts.push(projFilter);
-  ctx.textContent = parts.length ? parts.join(' \u00b7 ') : 'all projects \u00b7 all WA types';
+  ctxEl.textContent = parts.length ? parts.join(' · ') : 'all projects · all WA types';
 
-  const byProj = {};
+  const byP = {};
   projData.forEach(r => {
     const p = r['ProjectName'] || 'Unknown';
-    if (!byProj[p]) byProj[p] = { over: 0, est: 0, worked: 0, tasks: 0, overTasks: 0, nullTasks: 0, assignees: {}, id: r['ProjectID'] || '' };
-    byProj[p].tasks++;
-    const a = r['EntityWorked'] || 'Unknown';
-    if (!byProj[p].assignees[a]) byProj[p].assignees[a] = { over: 0, tasks: 0 };
-    byProj[p].assignees[a].tasks++;
-    // Deduplicate est by ObjectTypeID+WAType per project
-    // A project may have multiple TaskIDs per type (e.g. active + waived BPD tasks)
-    // but each WA type should only be counted once per ObjectType
-    if (!byProj[p].seenTasks) byProj[p].seenTasks = new Set();
-    const taskWAKey = (r['ObjectTypeID'] || '') + '||' + (r['WA Type'] || '');
-    if (!byProj[p].seenTasks.has(taskWAKey)) {
-      byProj[p].est += r._est;
-      byProj[p].seenTasks.add(taskWAKey);
+    if (!byP[p]) byP[p] = { over: 0, est: 0, worked: 0, tasks: 0, people: {}, id: r['ProjectID'] || '', seen: new Set() };
+    byP[p].tasks++;
+    byP[p].worked += r._worked;
+    const k = (r['ObjectTypeID'] || '') + '|' + (r['WA Type'] || '');
+    if (!byP[p].seen.has(k)) { byP[p].est += r._est; byP[p].seen.add(k); }
+    const a = r['EntityWorked'] || '';
+    if (a && a.toLowerCase() !== 'null') {
+      if (!byP[p].people[a]) byP[p].people[a] = { worked: 0, over: 0 };
+      byP[p].people[a].worked += r._worked;
+      if (!r._nullOver && r._hasOverage) byP[p].people[a].over += r._over;
     }
-    byProj[p].worked += r._worked;
-    if (r._nullOver) {
-      byProj[p].nullTasks++;
-    } else if (r._hasOverage) {
-      byProj[p].over += r._over;
-      byProj[p].overTasks++;
-      byProj[p].assignees[a].over += r._over;
-    }
+    if (!r._nullOver && r._hasOverage) { byP[p].over += r._over; }
   });
 
-  const entries = Object.entries(byProj).sort((a, b) => b[1].over - a[1].over);
+  const entries = Object.entries(byP).sort((a, b) => b[1].over - a[1].over);
   const maxOver = entries.reduce((m, e) => Math.max(m, e[1].over), 0);
-
-  if (!entries.length) {
-    grid.innerHTML = '<div class="empty" style="padding:1.5rem">No projects match current filters.</div>';
-    return;
-  }
+  if (!entries.length) { grid.innerHTML = '<div class="empty">No projects match current filters.</div>'; return; }
 
   grid.innerHTML = entries.map(([name, d]) => {
-    const pct      = d.est > 0 ? (d.over / d.est) * 100 : 0;
-    const barPct   = maxOver > 0 ? (d.over / maxOver) * 100 : 0;
-    const fillCls  = pct >= 75 ? '' : pct >= 30 ? 'warn' : 'ok';
+    const pct     = d.est > 0 ? (d.over / d.est) * 100 : 0;
+    const barPct  = maxOver > 0 ? (d.over / maxOver) * 100 : 0;
+    const fillCls = pct >= 75 ? '' : pct >= 30 ? 'warn' : 'ok';
     const pctLabel = d.over > 0 ? pct.toFixed(0) + '% over estimated' : 'on budget';
+
+    const personRows = Object.entries(d.people)
+      .filter(([n]) => n && n.toLowerCase() !== 'null')
+      .sort((a, b) => b[1].over - a[1].over)
+      .map(([n, pd]) => {
+        const overTd = pd.over > 0
+          ? '<td class="over-td">+' + pd.over.toFixed(1) + ' hrs</td>'
+          : '<td class="ok-td">on budget</td>';
+        return '<tr>'
+          + '<td class="pname">' + n + '</td>'
+          + '<td class="r">'    + (pd.worked > 0 ? pd.worked.toFixed(1) + ' hrs' : '—') + '</td>'
+          + overTd
+          + '</tr>';
+      }).join('');
+
     return '<div class="proj-card">'
-      + '<div class="proj-card-name" title="' + name + '">' + name + (d.id ? '<span style="font-size:10px;font-weight:400;color:var(--text3);margin-left:6px;">#' + d.id + '</span>' : '') + '</div>'
-      + '<div class="proj-card-stats">'
-      + '<div class="proj-stat"><div class="proj-stat-val">' + d.est.toFixed(1) + '</div><div class="proj-stat-label">estimated</div></div>'
-      + '<div class="proj-stat"><div class="proj-stat-val">' + d.worked.toFixed(1) + '</div><div class="proj-stat-label">logged</div></div>'
-      + '<div class="proj-stat"><div class="proj-stat-val' + (d.over > 0 ? ' red' : '') + '">+' + d.over.toFixed(1) + '</div><div class="proj-stat-label">overage</div></div>'
+      + '<div class="proj-card-name" title="' + name + '">' + name
+        + (d.id ? '<span style="font-size:10px;font-weight:400;color:#9a9a94;margin-left:6px">#' + d.id + '</span>' : '')
+      + '</div>'
+      + '<div class="stat-grid">'
+        + '<div class="stat-cell"><div class="stat-cell-lbl">Estimated</div><div class="stat-cell-val">'  + d.est.toFixed(1)    + '<span style="font-size:11px;font-weight:400;margin-left:2px">hrs</span></div></div>'
+        + '<div class="stat-cell"><div class="stat-cell-lbl">Logged</div><div class="stat-cell-val">'    + d.worked.toFixed(1) + '<span style="font-size:11px;font-weight:400;margin-left:2px">hrs</span></div></div>'
+        + '<div class="stat-cell"><div class="stat-cell-lbl">Overage</div><div class="stat-cell-val' + (d.over > 0 ? ' red' : '') + '">' + (d.over > 0 ? '+' : '') + d.over.toFixed(1) + '<span style="font-size:11px;font-weight:400;margin-left:2px">hrs</span></div></div>'
       + '</div>'
       + '<div class="proj-bar-track"><div class="proj-bar-fill ' + fillCls + '" style="width:' + barPct.toFixed(1) + '%"></div></div>'
       + '<div class="proj-pct">' + pctLabel + '</div>'
-      + '<div class="proj-assignees">'
-      + Object.entries(d.assignees).filter(([name]) => name && name.toLowerCase() !== 'null').sort((a,b) => b[1].over - a[1].over).map(([name, ad]) => {
-          const dotCls = ad.over > 0 ? ' over' : '';
-          return '<span class="assignee-chip"><span class="assignee-chip-dot' + dotCls + '"></span>' + name + '</span>';
-        }).join('')
-      + '</div>'
+      + '<table class="person-table">'
+        + '<thead><tr><th>Person</th><th class="r">Logged</th><th class="r">Overage</th></tr></thead>'
+        + '<tbody>' + personRows + '</tbody>'
+      + '</table>'
       + '</div>';
   }).join('');
 }
 
+
+// ── WA TYPE ───────────────────────────────────────────────────────────────────
 function renderWAType() {
-  const proj      = document.getElementById('filter-proj-w')?.value    || '';
-  const asgn      = document.getElementById('filter-asgn-w')?.value    || '';
-  const objFilter = document.getElementById('filter-objtype-w')?.value || '';
-  const data      = filterRows(proj, asgn, '', objFilter);
-  const accountable = data.filter(r => !r._nullOver);
-  const overData    = accountable.filter(r => r._hasOverage);
-
-  const totalOver = overData.reduce((s, r) => s + r._over, 0);
-  const waSet     = [...new Set(accountable.map(r => r._waLabel).filter(Boolean))];
-  const avgPer    = overData.length > 0 ? totalOver / overData.length : 0;
-
-  const byWA = {};
-  waSet.forEach(w => { byWA[w] = { over: 0, count: 0, prefix: '' }; });
-  accountable.forEach(r => {
-    const w = r._waLabel || 'Unknown';
-    if (!byWA[w]) byWA[w] = { over: 0, count: 0, prefix: '' };
-    byWA[w].over  += r._hasOverage ? r._over : 0;
-    byWA[w].count++;
-    byWA[w].prefix = getObjTypePrefix(r['ObjectTypeID']);
-  });
-
-  const topWA = Object.entries(byWA).sort((a, b) => b[1].over - a[1].over)[0];
-  metricCards('metrics-watype', [
-    { label: 'WA types tracked',    value: waSet.length },
-    { label: 'Total overage (hrs)', value: totalOver.toFixed(1) },
-    { label: 'Avg overage/task',    value: avgPer.toFixed(2) + ' hrs' },
-    { label: 'Highest WA type',     value: topWA ? topWA[0] : '—', sub: topWA ? topWA[1].over.toFixed(1) + ' hrs total' : '' }
+  const proj=document.getElementById('filter-proj-w')?.value||'';
+  const asgn=document.getElementById('filter-asgn-w')?.value||'';
+  const obj =document.getElementById('filter-objtype-w')?.value||'';
+  const data=filterRows(proj,asgn,'',obj);
+  const acc =data.filter(r=>!r._nullOver);
+  const over=acc.filter(r=>r._hasOverage);
+  const totOver=over.reduce((s,r)=>s+r._over,0);
+  const waSet=[...new Set(acc.map(r=>r._waLabel).filter(Boolean))];
+  const avg=over.length>0?totOver/over.length:0;
+  const bw={};
+  waSet.forEach(w=>{bw[w]={over:0,count:0,prefix:''};});
+  acc.forEach(r=>{const w=r._waLabel||'?';if(!bw[w])bw[w]={over:0,count:0,prefix:''};bw[w].over+=r._hasOverage?r._over:0;bw[w].count++;bw[w].prefix=getPrefix(r['ObjectTypeID']);});
+  const topWA=Object.entries(bw).sort((a,b)=>b[1].over-a[1].over)[0];
+  metricCards('metrics-watype',[
+    {label:'WA types tracked',value:waSet.length},
+    {label:'Total overage (hrs)',value:totOver.toFixed(1)},
+    {label:'Avg overage/task',value:avg.toFixed(2)+' hrs'},
+    {label:'Highest WA type',value:topWA?topWA[0]:'—',sub:topWA?topWA[1].over.toFixed(1)+' hrs total':''}
   ]);
-
-  const sorted    = Object.entries(byWA).sort((a, b) => b[1].over - a[1].over);
-  const labels    = sorted.map(x => x[0]);
-  const overVals  = sorted.map(x => parseFloat(x[1].over.toFixed(2)));
-  const avgVals   = sorted.map(x => x[1].count > 0 ? parseFloat((x[1].over / x[1].count).toFixed(2)) : 0);
-  const barColors = sorted.map(x => x[1].prefix === 'BPD' ? '#378ADD' : x[1].prefix === 'SA' ? '#7F77DD' : '#E24B4A');
-
+  const sorted=Object.entries(bw).sort((a,b)=>b[1].over-a[1].over);
   destroyChart('watype');
-  const wrap = document.getElementById('chart-watype-wrap');
-  wrap.style.height = Math.max(200, labels.length * 48 + 60) + 'px';
-  charts['watype'] = new Chart(document.getElementById('chart-watype'), {
-    type: 'bar',
-    data: { labels, datasets: [
-      { label: 'Total overage (hrs)', data: overVals, backgroundColor: barColors, borderRadius: 3, yAxisID: 'y' },
-      { label: 'Avg overage/task',    data: avgVals,  backgroundColor: 'rgba(239,159,39,0.75)', borderRadius: 3, yAxisID: 'y2' }
+  const wrap=document.getElementById('chart-watype-wrap');
+  wrap.style.height=Math.max(200,sorted.length*48+60)+'px';
+  charts['watype']=new Chart(document.getElementById('chart-watype'),{
+    type:'bar',
+    data:{labels:sorted.map(x=>x[0]),datasets:[
+      {label:'Total overage (hrs)',data:sorted.map(x=>parseFloat(x[1].over.toFixed(2))),backgroundColor:sorted.map(x=>x[1].prefix==='BPD'?'#378ADD':x[1].prefix==='SA'?'#7F77DD':'#E24B4A'),borderRadius:3,yAxisID:'y'},
+      {label:'Avg overage/task',data:sorted.map(x=>x[1].count>0?parseFloat((x[1].over/x[1].count).toFixed(2)):0),backgroundColor:'rgba(239,159,39,.75)',borderRadius:3,yAxisID:'y2'}
     ]},
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.x.toFixed(2)} hrs` } } },
-      scales: {
-        x:  { grid: { color: gridColor() }, ticks: { color: tickColor(), font: { size: 11 } } },
-        y:  { grid: { display: false },     ticks: { color: tickColor(), font: { size: 11 } } },
-        y2: { display: false }
-      }
-    }
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.dataset.label+': '+ctx.parsed.x.toFixed(2)+' hrs'}}},
+      scales:{x:{grid:{color:gridC()},ticks:{color:tickC(),font:{size:11}}},y:{grid:{display:false},ticks:{color:tickC(),font:{size:11}}},y2:{display:false}}}
   });
 }
 
+// ── TREND ─────────────────────────────────────────────────────────────────────
 function renderTrend() {
-  const asgn = document.getElementById('filter-asgn-t')?.value || '';
-  const wa   = document.getElementById('filter-wa-t')?.value   || '';
-  const data = filterRows('', asgn, wa, '').filter(r => !r._nullOver);
-
-  const byMonth = {};
-  data.forEach(r => {
-    if (!r._month) return;
-    if (!byMonth[r._month]) byMonth[r._month] = { over: 0, overCount: 0 };
-    byMonth[r._month].over += r._hasOverage ? r._over : 0;
-    if (r._hasOverage) byMonth[r._month].overCount++;
-  });
-
-  const months    = Object.keys(byMonth).sort();
-  const labels    = months.map(m => { const [y, mo] = m.split('-'); return new Date(+y, +mo - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }); });
-  const overVals  = months.map(m => parseFloat(byMonth[m].over.toFixed(2)));
-  const countVals = months.map(m => byMonth[m].overCount);
-
+  const asgn=document.getElementById('filter-asgn-t')?.value||'';
+  const wa  =document.getElementById('filter-wa-t')?.value||'';
+  const data=filterRows('',asgn,wa,'').filter(r=>!r._nullOver);
+  const bm={};
+  data.forEach(r=>{if(!r._month)return;if(!bm[r._month])bm[r._month]={over:0,n:0};bm[r._month].over+=r._hasOverage?r._over:0;if(r._hasOverage)bm[r._month].n++;});
+  const months=Object.keys(bm).sort();
+  const labels=months.map(m=>{const[y,mo]=m.split('-');return new Date(+y,+mo-1).toLocaleDateString('en-US',{month:'short',year:'2-digit'});});
   destroyChart('trend');
-  document.getElementById('chart-trend-wrap').style.height = '280px';
-  charts['trend'] = new Chart(document.getElementById('chart-trend'), {
-    type: 'bar',
-    data: { labels, datasets: [
-      { label: 'Total overage (hrs)', data: overVals,  backgroundColor: '#E24B4A', borderRadius: 4, yAxisID: 'y',  order: 2 },
-      { label: 'Tasks over budget',   data: countVals, type: 'line', borderColor: '#EF9F27', backgroundColor: 'rgba(239,159,39,0.15)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#EF9F27', yAxisID: 'y2', order: 1 }
+  document.getElementById('chart-trend-wrap').style.height='280px';
+  charts['trend']=new Chart(document.getElementById('chart-trend'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Total overage (hrs)',data:months.map(m=>parseFloat(bm[m].over.toFixed(2))),backgroundColor:'#E24B4A',borderRadius:4,yAxisID:'y',order:2},
+      {label:'Tasks over budget',data:months.map(m=>bm[m].n),type:'line',borderColor:'#EF9F27',backgroundColor:'rgba(239,159,39,.15)',fill:true,tension:0.4,pointRadius:4,pointBackgroundColor:'#EF9F27',yAxisID:'y2',order:1}
     ]},
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x:  { grid: { color: gridColor() }, ticks: { color: tickColor(), font: { size: 11 }, autoSkip: false, maxRotation: 45 } },
-        y:  { grid: { color: gridColor() }, ticks: { color: tickColor(), font: { size: 11 } }, title: { display: true, text: 'Overage hrs', color: tickColor(), font: { size: 11 } } },
-        y2: { position: 'right', grid: { display: false }, ticks: { color: tickColor(), font: { size: 11 } }, title: { display: true, text: 'Task count', color: tickColor(), font: { size: 11 } } }
-      }
-    }
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:gridC()},ticks:{color:tickC(),font:{size:11},autoSkip:false,maxRotation:45}},
+        y:{grid:{color:gridC()},ticks:{color:tickC(),font:{size:11}},title:{display:true,text:'Overage hrs',color:tickC(),font:{size:11}}},
+        y2:{position:'right',grid:{display:false},ticks:{color:tickC(),font:{size:11}},title:{display:true,text:'Task count',color:tickC(),font:{size:11}}}}}
   });
 }
 
+// ── WORST OFFENDERS ───────────────────────────────────────────────────────────
 function renderWorst() {
-  const proj = document.getElementById('filter-proj-wo')?.value  || '';
-  const asgn = document.getElementById('filter-asgn-wo')?.value  || '';
-  const wa   = document.getElementById('filter-wa-wo')?.value    || '';
-  const top  = parseInt(document.getElementById('filter-top-wo')?.value || '20');
-
-  let data = filterRows(proj, asgn, wa, '').filter(r => !r._nullOver && r._hasOverage);
-  data.sort((a, b) => b._over - a._over);
-  if (top > 0) data = data.slice(0, top);
-
-  const wrap = document.getElementById('worst-table-wrap');
-  if (!data.length) { wrap.innerHTML = '<div class="empty">No overage tasks match the current filters.</div>'; return; }
-
-  const pctClass = p => p >= 100 ? 'pill-red' : p >= 50 ? 'pill-amber' : 'pill-green';
-
-  wrap.innerHTML = `<table class="task-table">
-    <thead><tr>
-      <th>Project</th><th>Task ID</th><th>Type</th><th>WA Type</th>
-      <th>Assignee</th><th>Est</th><th>Worked</th><th>Over by</th><th>% Over</th><th>Due</th>
-    </tr></thead>
-    <tbody>${data.map(r => {
-      const pct    = r._est > 0 ? Math.round((r._over / r._est) * 100) : 0;
-      const prefix = getObjTypePrefix(r['ObjectTypeID']);
-      const badge  = prefix ? `<span class="pill ${prefix === 'BPD' ? 'pill-bpd' : 'pill-sa'}">${prefix}</span>` : '';
-      return `<tr>
-        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r['ProjectName']}">${r['ProjectName']}</td>
-        <td class="muted">${r['TaskID']}</td>
-        <td>${badge}</td>
-        <td>${r['WA Type']}</td>
-        <td><strong>${r['EntityWorked']}</strong></td>
-        <td style="text-align:right">${r._est.toFixed(1)}</td>
-        <td style="text-align:right">${r._worked.toFixed(1)}</td>
-        <td style="text-align:right" class="over-val">+${r._over.toFixed(1)}</td>
-        <td><span class="pill ${pctClass(pct)}">${pct}%</span></td>
-        <td class="muted">${r['DateAssignmentDue']}</td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table>`;
+  const proj=document.getElementById('filter-proj-wo')?.value||'';
+  const asgn=document.getElementById('filter-asgn-wo')?.value||'';
+  const wa  =document.getElementById('filter-wa-wo')?.value||'';
+  const top =parseInt(document.getElementById('filter-top-wo')?.value||'20');
+  let data=filterRows(proj,asgn,wa,'').filter(r=>!r._nullOver&&r._hasOverage);
+  data.sort((a,b)=>b._over-a._over); if(top>0) data=data.slice(0,top);
+  const wrap=document.getElementById('worst-table-wrap');
+  if(!data.length){wrap.innerHTML='<div class="empty">No overage tasks match the current filters.</div>';return;}
+  const pc=p=>p>=100?'pill-red':p>=50?'pill-amber':'pill-green';
+  wrap.innerHTML='<table class="task-table"><thead><tr><th>Project</th><th>Task ID</th><th>Type</th><th>WA Type</th><th>Assignee</th><th>Est</th><th>Worked</th><th>Over by</th><th>% Over</th><th>Due</th></tr></thead><tbody>'
+    +data.map(r=>{
+      const pct=r._est>0?Math.round((r._over/r._est)*100):0;
+      const pfx=getPrefix(r['ObjectTypeID']);
+      const badge=pfx?'<span class="pill '+(pfx==='BPD'?'pill-bpd':'pill-sa')+'">'+pfx+'</span>':'';
+      return '<tr>'
+        +'<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+r['ProjectName']+'">'+r['ProjectName']+'</td>'
+        +'<td class="muted">'+r['TaskID']+'</td><td>'+badge+'</td><td>'+r['WA Type']+'</td>'
+        +'<td><strong>'+r['EntityWorked']+'</strong></td>'
+        +'<td style="text-align:right">'+r._est.toFixed(1)+'</td>'
+        +'<td style="text-align:right">'+r._worked.toFixed(1)+'</td>'
+        +'<td style="text-align:right" class="over-val">+'+r._over.toFixed(1)+'</td>'
+        +'<td><span class="pill '+pc(pct)+'">'+pct+'%</span></td>'
+        +'<td class="muted">'+r['DateAssignmentDue']+'</td></tr>';
+    }).join('')+'</tbody></table>';
 }
 
 function showTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelector(`.tab[onclick="showTab('${name}')"]`).classList.add('active');
-  document.getElementById(`panel-${name}`).classList.add('active');
-  if (rows.length > 0) {
-    if (name === 'assignee') renderAssignee();
-    if (name === 'watype')   renderWAType();
-    if (name === 'trend')    renderTrend();
-    if (name === 'worst')    renderWorst();
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab[onclick="showTab(\''+name+'\')"]').classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+  if(rows.length>0){
+    if(name==='assignee') renderAssignee();
+    if(name==='watype')   renderWAType();
+    if(name==='trend')    renderTrend();
+    if(name==='worst')    renderWorst();
   }
 }
 
