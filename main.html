@@ -260,6 +260,7 @@
   <!-- BY ASSIGNEE -->
   <div class="panel" id="panel-assignee">
     <div class="metrics" id="metrics-assignee"></div>
+    <div id="net-balance-card"></div>
     <div class="filters">
       <label>Project:</label>
       <select id="filter-proj-a" onchange="renderAssignee()"><option value="">All</option></select>
@@ -507,6 +508,8 @@ function renderAssignee() {
     { label: 'Top offender',        value: topAsgn ? topAsgn[0] : '—', sub: topAsgn ? topAsgn[1].toFixed(1) + ' hrs over' : '' }
   ]);
 
+  renderNetBalance(accountable);
+
   const asgnMap = {};
   accountable.forEach(r => {
     const a = r['EntityWorked'] || 'Unknown';
@@ -641,6 +644,118 @@ function renderAssignee() {
 
   renderProjectBreakdown(data, proj, wa);
 }
+
+function renderNetBalance(accountable) {
+  const el = document.getElementById('net-balance-card');
+  if (!el) return;
+
+  // Compute totals — deduplicate est by ObjectTypeID+ProjectID+WAType
+  const seenEst = new Set();
+  let totalEst = 0, totalWorked = 0, totalSaved = 0, totalLost = 0;
+  let tasksSaved = 0, tasksLost = 0, tasksOnBudget = 0;
+
+  accountable.forEach(r => {
+    const key = (r['ObjectTypeID'] || '') + '||' + (r['ProjectID'] || '') + '||' + (r['WA Type'] || '');
+    if (!seenEst.has(key)) { totalEst += r._est; seenEst.add(key); }
+    totalWorked += r._worked;
+    if (r._hasOverage) {
+      totalLost += r._over;
+      tasksLost++;
+    } else if (r._over === 0) {
+      tasksOnBudget++;
+    } else {
+      // under budget: saved = est - worked (but only for rows where over = 0 exactly or slightly under)
+    }
+  });
+
+  // Saved = sum of (est - worked) for tasks that came in under or on budget
+  // Use worked vs est per WA type per project (deduped est)
+  const projWAEst = {};
+  const projWAWorked = {};
+  accountable.forEach(r => {
+    const key = (r['ObjectTypeID'] || '') + '||' + (r['ProjectID'] || '') + '||' + (r['WA Type'] || '');
+    if (!projWAEst[key]) projWAEst[key] = r._est;
+    projWAWorked[key] = (projWAWorked[key] || 0) + r._worked;
+  });
+
+  Object.entries(projWAEst).forEach(([key, est]) => {
+    const worked = projWAWorked[key] || 0;
+    const diff = est - worked;
+    if (diff > 0) { totalSaved += diff; tasksSaved++; }
+    else if (diff < 0) { /* already counted in totalLost via Over By */ }
+  });
+
+  const net = totalSaved - totalLost;
+  const netCls = net > 0 ? 'positive' : net < 0 ? 'negative' : 'neutral';
+  const netSign = net > 0 ? '+' : '';
+  const netLabel = net > 0 ? 'hrs ahead of schedule' : net < 0 ? 'hrs behind schedule' : 'exactly on schedule';
+
+  // Scale bars — max height 56px
+  const maxVal = Math.max(totalEst, totalWorked, 0.01);
+  const estH    = Math.round((totalEst    / maxVal) * 56);
+  const workedH = Math.round((totalWorked / maxVal) * 56);
+  const savedH  = Math.round((totalSaved  / maxVal) * 56);
+  const lostH   = Math.round((totalLost   / maxVal) * 56);
+  const netH    = Math.round((Math.abs(net) / maxVal) * 56);
+
+  el.innerHTML = `
+    <div class="net-balance-card">
+      <div class="net-balance-header">
+        <div class="net-balance-title">Net time balance</div>
+        <div class="net-balance-result">
+          <span class="net-balance-num ${netCls}">${netSign}${Math.abs(net).toFixed(1)}</span>
+          <span class="net-balance-label">${netLabel}</span>
+        </div>
+      </div>
+      <div class="net-waterfall">
+        <div class="wf-col">
+          <div class="wf-bar-wrap"><div class="wf-bar est" style="height:${estH}px"></div></div>
+          <div class="wf-val">${totalEst.toFixed(1)}</div>
+          <div class="wf-key">Estimated</div>
+        </div>
+        <div class="wf-divider"></div>
+        <div class="wf-col">
+          <div class="wf-bar-wrap"><div class="wf-bar saved" style="height:${savedH}px"></div></div>
+          <div class="wf-val" style="color:#3B6D11">−${totalSaved.toFixed(1)}</div>
+          <div class="wf-key">Saved</div>
+        </div>
+        <div class="wf-col">
+          <div class="wf-bar-wrap"><div class="wf-bar lost" style="height:${lostH}px"></div></div>
+          <div class="wf-val" style="color:var(--red-text)">+${totalLost.toFixed(1)}</div>
+          <div class="wf-key">Lost</div>
+        </div>
+        <div class="wf-divider"></div>
+        <div class="wf-col">
+          <div class="wf-bar-wrap"><div class="wf-bar ${net >= 0 ? 'net-pos' : 'net-neg'}" style="height:${netH}px"></div></div>
+          <div class="wf-val" style="color:${net >= 0 ? '#3B6D11' : 'var(--red-text)'}">${netSign}${net.toFixed(1)}</div>
+          <div class="wf-key">Net</div>
+        </div>
+      </div>
+      <div class="net-balance-row">
+        <div class="net-stat">
+          <div class="net-stat-val">${totalEst.toFixed(1)}</div>
+          <div class="net-stat-lbl">Total estimated</div>
+        </div>
+        <div class="net-stat">
+          <div class="net-stat-val">${totalWorked.toFixed(1)}</div>
+          <div class="net-stat-lbl">Total logged</div>
+        </div>
+        <div class="net-stat">
+          <div class="net-stat-val g">−${totalSaved.toFixed(1)}</div>
+          <div class="net-stat-lbl">Time saved (${tasksSaved} WAs)</div>
+        </div>
+        <div class="net-stat">
+          <div class="net-stat-val r">+${totalLost.toFixed(1)}</div>
+          <div class="net-stat-lbl">Time lost (${tasksLost} WAs)</div>
+        </div>
+        <div class="net-stat">
+          <div class="net-stat-val ${netCls === 'positive' ? 'g' : netCls === 'negative' ? 'r' : ''}">${netSign}${net.toFixed(1)}</div>
+          <div class="net-stat-lbl">Net balance</div>
+        </div>
+      </div>
+    </div>`;
+}
+
 
 function renderProjectBreakdown(projData, projFilter, waFilter) {
   const grid = document.getElementById('proj-breakdown-grid');
