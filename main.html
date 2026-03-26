@@ -386,7 +386,7 @@ function renderAssignee() {
     {label:'Overage %',value:pct+'%',sub:'of total estimated'},
     {label:'Top offender',value:top?top[0]:'—',sub:top?top[1].toFixed(1)+' hrs over':''}
   ]);
-  renderNetBalance(acc);
+  renderNetBalance(data);
 
   const am={};
   acc.forEach(r=>{
@@ -445,15 +445,16 @@ function renderAssignee() {
 }
 
 // ── NET BALANCE ───────────────────────────────────────────────────────────────
-function renderNetBalance(acc) {
+function renderNetBalance(data) {
   const el=document.getElementById('net-balance-card'); if(!el) return;
+  // Use ALL rows for est totals (including NULL over-by); only accountable rows for saved/lost
   const seen=new Set(); let totEst=0,totWorked=0,tasksLost=0;
   const pEst={},pWorked={};
-  acc.forEach(r=>{
+  data.forEach(r=>{
     const k=(r['ObjectTypeID']||'')+'|'+(r['ProjectID']||'')+'|'+(r['WA Type']||'');
     if(!seen.has(k)){totEst+=r._est;seen.add(k);pEst[k]=r._est;}
     totWorked+=r._worked; pWorked[k]=(pWorked[k]||0)+r._worked;
-    if(r._hasOverage) tasksLost++;
+    if(!r._nullOver && r._hasOverage) tasksLost++;
   });
   let saved=0,lost=0,tasksSaved=0;
   Object.entries(pEst).forEach(([k,e])=>{const w=pWorked[k]||0,d=e-w;if(d>0){saved+=d;tasksSaved++;}else if(d<0){lost+=Math.abs(d);}});
