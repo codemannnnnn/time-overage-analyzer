@@ -193,13 +193,39 @@
   .empty { text-align: center; padding: 3rem; color: var(--text3); font-size: 13px; }
   .over-val { font-weight: 600; color: var(--red-text); }
   .muted    { color: var(--text2); }
+
+  /* EXPORT */
+  .export-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999; opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .export-overlay.show { opacity: 1; pointer-events: all; }
+  .export-modal {
+    background: var(--bg); border: 0.5px solid var(--border2);
+    border-radius: var(--radius-lg); padding: 28px 32px;
+    width: 360px; max-width: 90vw; text-align: center;
+  }
+  .export-modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .export-modal p  { font-size: 13px; color: var(--text2); margin-bottom: 16px; line-height: 1.6; }
+  .export-spinner {
+    width: 32px; height: 32px; border: 3px solid var(--bg3);
+    border-top-color: var(--text); border-radius: 50%;
+    animation: spin .7s linear infinite; margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .export-error { color: var(--red-text); font-size: 13px; margin-top: 8px; }
+
 </style>
 </head>
 <body>
 <div class="app-shell">
-  <div class="app-header">
-    <h1>Time Overage Analyzer</h1>
-    <p>Paste tab-separated task export data to analyze overages by assignee, WA type, trend, and task.</p>
+  <div class="app-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+    <div>
+      <h1>Time Overage Analyzer</h1>
+      <p>Paste tab-separated task export data to analyze overages by assignee, WA type, trend, and task.</p>
+    </div>
+    <button class="btn primary" id="export-btn" onclick="exportReport()" style="white-space:nowrap;margin-top:4px;display:none">Export Report</button>
   </div>
   <div class="tabs">
     <button class="tab active" onclick="showTab('data')">Data Input</button>
@@ -297,7 +323,17 @@
   </div>
 </div>
 
+<div class="export-overlay" id="export-overlay">
+  <div class="export-modal">
+    <div class="export-spinner" id="export-spinner"></div>
+    <h3 id="export-modal-title">Generating Report</h3>
+    <p id="export-modal-msg">Analyzing your data and writing commentary…</p>
+    <button class="btn" id="export-cancel-btn" onclick="document.getElementById('export-overlay').classList.remove('show')" style="display:none">Close</button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 let rows = [], charts = {};
 
@@ -643,6 +679,216 @@ function showTab(name) {
 }
 
 loadSample();
+
+// ── EXPORT REPORT ─────────────────────────────────────────────────────────────
+function showExportModal(title, msg, showClose=false) {
+  document.getElementById('export-modal-title').textContent = title;
+  document.getElementById('export-modal-msg').textContent   = msg;
+  document.getElementById('export-spinner').style.display   = showClose ? 'none' : 'block';
+  document.getElementById('export-cancel-btn').style.display = showClose ? 'inline-block' : 'none';
+  document.getElementById('export-overlay').classList.add('show');
+}
+
+async function exportReport() {
+  if (!rows.length) { alert('Load data first.'); return; }
+
+  showExportModal('Generating Report', 'Analyzing your data and writing commentary…');
+
+  try {
+    // ── Aggregate all data ───────────────────────────────────────────────────
+    const allData   = filterRows('','','','');
+    const acc       = allData.filter(r => !r._nullOver);
+    const overRows  = acc.filter(r => r._hasOverage);
+
+    // Summary metrics
+    const seenEst = new Set();
+    let totEst = 0, totWorked = 0;
+    allData.forEach(r => {
+      const k = (r['ObjectTypeID']||'')+'|'+(r['ProjectID']||'')+'|'+(r['WA Type']||'');
+      if (!seenEst.has(k)) { totEst += r._est; seenEst.add(k); }
+      totWorked += r._worked;
+    });
+    const totOver   = overRows.reduce((s,r) => s+r._over, 0);
+    const overPct   = totEst > 0 ? (totOver/totEst*100) : 0;
+
+    // By assignee
+    const asgnMap = {};
+    acc.forEach(r => {
+      const a = r['EntityWorked']||'Unknown';
+      if (!asgnMap[a]) asgnMap[a] = { est:0, worked:0, over:0, seenK:new Set() };
+      const k = (r['ObjectTypeID']||'')+'|'+(r['ProjectID']||'')+'|'+(r['WA Type']||'');
+      if (!asgnMap[a].seenK.has(k)) { asgnMap[a].est += r._est; asgnMap[a].seenK.add(k); }
+      asgnMap[a].worked += r._worked;
+      if (r._hasOverage) asgnMap[a].over += r._over;
+    });
+    const asgnRows = Object.entries(asgnMap)
+      .filter(([n]) => n && n.toLowerCase() !== 'null')
+      .sort((a,b) => b[1].over - a[1].over)
+      .map(([n,d]) => ({
+        Assignee: n,
+        'Estimated (hrs)': +d.est.toFixed(2),
+        'Logged (hrs)':    +d.worked.toFixed(2),
+        'Overage (hrs)':   +d.over.toFixed(2),
+        'Overage %':       d.est>0 ? +((d.over/d.est)*100).toFixed(1) : 0,
+        'Status':          d.over > d.est*0.2 ? 'Needs Attention' : d.over > 0 ? 'Over Budget' : 'On Track'
+      }));
+
+    // By WA type
+    const waMap = {};
+    acc.forEach(r => {
+      const w = r._waLabel||'Unknown';
+      if (!waMap[w]) waMap[w] = { over:0, count:0, prefix: (r['ObjectTypeID']||'').includes('Business') ? 'BPD' : 'SA' };
+      waMap[w].count++;
+      if (r._hasOverage) waMap[w].over += r._over;
+    });
+    const waRows = Object.entries(waMap)
+      .sort((a,b) => b[1].over - a[1].over)
+      .map(([w,d]) => ({
+        'WA Type': w,
+        'Task Type': d.prefix,
+        'Total Overage (hrs)': +d.over.toFixed(2),
+        'Task Count': d.count,
+        'Avg Overage/Task': d.count>0 ? +((d.over/d.count).toFixed(2)) : 0
+      }));
+
+    // By project
+    const projMap = {};
+    allData.forEach(r => {
+      const p = r['ProjectName']||'Unknown';
+      if (!projMap[p]) projMap[p] = { id:r['ProjectID']||'', est:0, worked:0, over:0, seen:new Set() };
+      const k = (r['ObjectTypeID']||'')+'|'+(r['WA Type']||'');
+      if (!projMap[p].seen.has(k)) { projMap[p].est += r._est; projMap[p].seen.add(k); }
+      projMap[p].worked += r._worked;
+      if (!r._nullOver && r._hasOverage) projMap[p].over += r._over;
+    });
+    const projRows = Object.entries(projMap)
+      .sort((a,b) => b[1].over - a[1].over)
+      .map(([n,d]) => ({
+        'Project': n,
+        'Project ID': d.id,
+        'Estimated (hrs)': +d.est.toFixed(2),
+        'Logged (hrs)':    +d.worked.toFixed(2),
+        'Overage (hrs)':   +d.over.toFixed(2),
+        'Overage %':       d.est>0 ? +((d.over/d.est)*100).toFixed(1) : 0,
+        'Status': d.over > d.est*0.2 ? 'Needs Attention' : d.over > 0 ? 'Over Budget' : 'On Track'
+      }));
+
+    // Worst tasks
+    const worstRows = acc
+      .filter(r => r._hasOverage)
+      .sort((a,b) => b._over - a._over)
+      .slice(0, 25)
+      .map(r => ({
+        'Project':         r['ProjectName'],
+        'Task ID':         r['TaskID'],
+        'WA Type':         r['WA Type'],
+        'Task Type':       (r['ObjectTypeID']||'').includes('Business') ? 'BPD' : 'SA',
+        'Assignee':        r['EntityWorked'],
+        'Estimated (hrs)': r._est,
+        'Logged (hrs)':    r._worked,
+        'Overage (hrs)':   +r._over.toFixed(2),
+        'Overage %':       r._est>0 ? +((r._over/r._est)*100).toFixed(1) : 0,
+        'Due Date':        r['DateAssignmentDue']
+      }));
+
+    // ── Call API for commentary ──────────────────────────────────────────────
+    showExportModal('Generating Report', 'Writing leadership commentary…');
+
+    const prompt = 'You are preparing a concise executive summary for company leadership about software project time overages.\n\n'
+      + 'DATA SUMMARY:\n'
+      + '- Total estimated hours: ' + totEst.toFixed(1) + '\n'
+      + '- Total logged hours: ' + totWorked.toFixed(1) + '\n'
+      + '- Total overage: ' + totOver.toFixed(1) + ' hrs (' + overPct.toFixed(1) + '% over budget)\n'
+      + '- Projects tracked: ' + Object.keys(projMap).length + '\n'
+      + '- Assignees: ' + asgnRows.length + '\n\n'
+      + 'TOP 5 ASSIGNEES BY OVERAGE:\n'
+      + asgnRows.slice(0,5).map(a => '- ' + a.Assignee + ': +' + a['Overage (hrs)'] + ' hrs (' + a['Overage %'] + '% over, estimated ' + a['Estimated (hrs)'] + ' hrs)').join('\n') + '\n\n'
+      + 'TOP 5 PROJECTS BY OVERAGE:\n'
+      + projRows.slice(0,5).map(p => '- ' + p.Project + ' (#' + p['Project ID'] + '): +' + p['Overage (hrs)'] + ' hrs (' + p['Overage %'] + '% over)').join('\n') + '\n\n'
+      + 'TOP 5 WA TYPES BY OVERAGE:\n'
+      + waRows.slice(0,5).map(w => '- ' + w['WA Type'] + ': +' + w['Total Overage (hrs)'] + ' hrs total overage').join('\n') + '\n\n'
+      + 'Write a professional executive summary with these sections:\n'
+      + '1. OVERALL STATUS (2-3 sentences: are we ahead or behind, key headline number)\n'
+      + '2. KEY CONCERNS (bullet points: flag the top 3 things leadership needs to know - name specific people/projects if they stand out significantly)\n'
+      + '3. BRIGHT SPOTS (bullet points: what is working well, who came in under budget)\n'
+      + '4. RECOMMENDED ACTIONS (bullet points: 2-3 concrete actions to address the overages)\n\n'
+      + 'Keep it concise, data-driven, and direct. No fluff. Format each section with its heading in ALL CAPS followed by a colon.'
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const apiData = await resp.json();
+    const commentary = apiData.content?.find(b => b.type === 'text')?.text || 'Commentary unavailable.';
+
+    // ── Build Excel workbook ─────────────────────────────────────────────────
+    showExportModal('Generating Report', 'Building Excel workbook…');
+
+    const wb = XLSX.utils.book_new();
+
+    // Helper: style header row (openpyxl not available client-side, use XLSX)
+    const addSheet = (name, data, headerColor) => {
+      const ws = XLSX.utils.json_to_sheet(data);
+      // Set col widths
+      const cols = Object.keys(data[0]||{});
+      ws['!cols'] = cols.map(c => ({ wch: Math.max(c.length+2, 14) }));
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    };
+
+    // Tab 1: Executive Summary (commentary as text)
+    const today = new Date().toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+    var summaryLines = commentary.split('\n').filter(function(l){ return l.trim(); });
+    var summaryData = [
+      { 'Executive Summary': 'Generated: ' + today },
+      { 'Executive Summary': '' }
+    ].concat(summaryLines.map(function(line){ return { 'Executive Summary': line }; }));
+    var wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    wsSummary['!cols'] = [{ wch: 90 }];
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Executive Summary');
+
+    // Tab 2: Overall Metrics
+    const metricsData = [
+      { Metric: 'Total Estimated (hrs)',    Value: +totEst.toFixed(2) },
+      { Metric: 'Total Logged (hrs)',       Value: +totWorked.toFixed(2) },
+      { Metric: 'Total Overage (hrs)',      Value: +totOver.toFixed(2) },
+      { Metric: 'Overage % of Estimated',  Value: +overPct.toFixed(1) },
+      { Metric: 'Projects Tracked',         Value: Object.keys(projMap).length },
+      { Metric: 'Assignees',                Value: asgnRows.length },
+      { Metric: 'WA Types Tracked',         Value: waRows.length },
+      { Metric: 'Tasks Over Budget',        Value: overRows.length },
+      { Metric: 'Total Tasks Accounted',    Value: acc.length },
+    ];
+    addSheet('Overall Metrics', metricsData);
+
+    // Tab 3: By Assignee
+    addSheet('By Assignee', asgnRows);
+
+    // Tab 4: By Project
+    addSheet('By Project', projRows);
+
+    // Tab 5: By WA Type
+    addSheet('By WA Type', waRows);
+
+    // Tab 6: Top 25 Worst Offenders
+    addSheet('Worst Offenders', worstRows);
+
+    // Download
+    const dateStr = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `overage_report_${dateStr}.xlsx`);
+
+    showExportModal('Report Ready', 'Your Excel report has been downloaded.', true);
+
+  } catch(err) {
+    console.error(err);
+    showExportModal('Export Failed', 'Something went wrong: ' + err.message, true);
+  }
+}
+
 </script>
 </body>
 </html>
