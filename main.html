@@ -696,6 +696,8 @@ async function exportReport() {
   showExportModal('Generating Report', 'Analyzing your data and writing commentary…');
 
   try {
+    const today = new Date().toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+
     // ── Aggregate all data ───────────────────────────────────────────────────
     const allData   = filterRows('','','','');
     const acc       = allData.filter(r => !r._nullOver);
@@ -795,73 +797,142 @@ async function exportReport() {
     // ── Generate commentary locally from data
     showExportModal('Generating Report', 'Writing leadership commentary...');
 
-    // Helper
-    function pct(over, est) { return est > 0 ? ((over/est)*100).toFixed(1) : '0.0'; }
     function bullet(s) { return '  - ' + s; }
+    function sep()     { return ''; }
+
+    // ── Re-aggregate by WA type with full project detail ──────────────────
+    // Build: waDetail[waLabel] = { est, worked, over, saved, taskCount, prefix, projects: {name: {est,worked,over}} }
+    var waDetail = {};
+    allData.forEach(function(r) {
+      var w = r._waLabel || 'Unknown';
+      var prefix = (r['ObjectTypeID']||'').toLowerCase().indexOf('business') >= 0 ? 'BPD' : 'SA';
+      if (!waDetail[w]) waDetail[w] = { est:0, worked:0, over:0, saved:0, taskCount:0, prefix:prefix, projects:{}, seen:new Set() };
+      var d = waDetail[w];
+      // Dedup est by project
+      var k = (r['ProjectID']||'') + '|' + (r['ObjectTypeID']||'');
+      if (!d.seen.has(k)) { d.est += r._est; d.seen.add(k); }
+      d.worked += r._worked;
+      d.taskCount++;
+      // Per-project within this WA type
+      var pn = r['ProjectName'] || 'Unknown';
+      var pid = r['ProjectID'] || '';
+      var pk = pn + '||' + pid;
+      if (!d.projects[pk]) d.projects[pk] = { name:pn, id:pid, est:0, worked:0, over:0, seenK:new Set() };
+      var pp = d.projects[pk];
+      var pk2 = r['ObjectTypeID'] + '|' + r['ProjectID'];
+      if (!pp.seenK.has(pk2)) { pp.est += r._est; pp.seenK.add(pk2); }
+      pp.worked += r._worked;
+      if (!r._nullOver && r._hasOverage) { d.over += r._over; pp.over += r._over; }
+    });
+
+    // Compute saved per WA type (est - worked for under-budget WA+project combos)
+    Object.keys(waDetail).forEach(function(w) {
+      var d = waDetail[w];
+      Object.keys(d.projects).forEach(function(pk) {
+        var pp = d.projects[pk];
+        var diff = pp.est - pp.worked;
+        if (diff > 0) d.saved += diff;
+      });
+    });
+
+    // Sort by total overage descending, take top 3
+    var top3WA = Object.entries(waDetail)
+      .filter(function(e) { return e[1].over > 0; })
+      .sort(function(a,b) { return b[1].over - a[1].over; })
+      .slice(0, 3);
+
+    // Also compute BPD totals and SA totals across everything
+    var bpdTot = { est:0, worked:0, over:0, saved:0 };
+    var saTot  = { est:0, worked:0, over:0, saved:0 };
+    Object.entries(waDetail).forEach(function(e) {
+      var d = e[1];
+      var t = d.prefix === 'BPD' ? bpdTot : saTot;
+      t.est    += d.est;
+      t.worked += d.worked;
+      t.over   += d.over;
+      t.saved  += d.saved;
+    });
 
     var lines = [];
 
-    // OVERALL STATUS
+    // ── OVERALL STATUS ──────────────────────────────────────────────────────
     lines.push('OVERALL STATUS:');
     var statusMsg = overPct > 25
-      ? 'The portfolio is significantly over budget. ' + totOver.toFixed(1) + ' hours have been logged beyond estimates (' + overPct.toFixed(1) + '% over) across ' + Object.keys(projMap).length + ' projects. Immediate review is warranted.'
+      ? 'The portfolio is significantly over budget. ' + totOver.toFixed(1) + ' hours have been logged beyond estimates (' + overPct.toFixed(1) + '% over) across ' + Object.keys(projMap).length + ' projects. Immediate attention is needed.'
       : overPct > 10
-      ? 'The portfolio is moderately over budget at ' + overPct.toFixed(1) + '% (' + totOver.toFixed(1) + ' hrs over). Most overages are concentrated in a small number of projects and assignees.'
-      : 'The portfolio is broadly on track at ' + overPct.toFixed(1) + '% over estimated (' + totOver.toFixed(1) + ' hrs). Variance is within acceptable range but a few items warrant attention.';
+      ? 'The portfolio is moderately over budget at ' + overPct.toFixed(1) + '% (' + totOver.toFixed(1) + ' hrs over). Overages are concentrated in a small number of WA categories.'
+      : 'The portfolio is broadly on track at ' + overPct.toFixed(1) + '% over estimated (' + totOver.toFixed(1) + ' hrs). Variance is within acceptable range.';
     lines.push(statusMsg);
-    lines.push('Total estimated: ' + totEst.toFixed(1) + ' hrs | Total logged: ' + totWorked.toFixed(1) + ' hrs | Total overage: +' + totOver.toFixed(1) + ' hrs');
-    lines.push('');
+    lines.push('Total estimated: ' + totEst.toFixed(1) + ' hrs  |  Total logged: ' + totWorked.toFixed(1) + ' hrs  |  Net overage: +' + totOver.toFixed(1) + ' hrs');
+    lines.push(sep());
 
-    // KEY CONCERNS
-    lines.push('KEY CONCERNS:');
-    var concerns = 0;
-    asgnRows.slice(0, 5).forEach(function(a) {
-      if (a['Overage (hrs)'] > 0 && concerns < 3) {
-        lines.push(bullet(a.Assignee + ' is ' + a['Overage (hrs)'] + ' hrs over budget (' + a['Overage %'] + '% over their ' + a['Estimated (hrs)'] + ' hr estimate).'));
-        concerns++;
+    // ── TOP 3 OVERAGE CATEGORIES ────────────────────────────────────────────
+    lines.push('TOP 3 OVERAGE CATEGORIES:');
+    lines.push(sep());
+
+    top3WA.forEach(function(entry, idx) {
+      var wName = entry[0];
+      var d     = entry[1];
+      var netDir = d.saved > d.over ? 'net savings of ' + (d.saved - d.over).toFixed(1) + ' hrs'
+                 : d.over  > d.saved ? 'net loss of '    + (d.over - d.saved).toFixed(1) + ' hrs'
+                 : 'net neutral';
+      var overPctWA = d.est > 0 ? ((d.over / d.est) * 100).toFixed(1) : '0.0';
+
+      lines.push((idx+1) + '. ' + wName + '  [' + d.prefix + ']');
+      lines.push('   Estimated: ' + d.est.toFixed(1) + ' hrs  |  Logged: ' + d.worked.toFixed(1) + ' hrs  |  Overage: +' + d.over.toFixed(1) + ' hrs (' + overPctWA + '% over)  |  Saved: -' + d.saved.toFixed(1) + ' hrs  |  Net: ' + netDir);
+
+      // Top 3 projects within this WA type by overage
+      var projsSorted = Object.values(d.projects)
+        .filter(function(p) { return p.over > 0; })
+        .sort(function(a,b) { return b.over - a.over; })
+        .slice(0, 3);
+
+      if (projsSorted.length > 0) {
+        lines.push('   Worst projects in this category:');
+        projsSorted.forEach(function(p) {
+          var ppct = p.est > 0 ? ((p.over / p.est) * 100).toFixed(0) : '0';
+          lines.push('     - ' + p.name + ' (#' + p.id + ')  |  Est: ' + p.est.toFixed(1) + ' hrs  |  Logged: ' + p.worked.toFixed(1) + ' hrs  |  Over: +' + p.over.toFixed(1) + ' hrs (' + ppct + '%)');
+        });
       }
+      lines.push(sep());
     });
-    projRows.slice(0, 5).forEach(function(p) {
-      if (p['Overage (hrs)'] > 0 && concerns < 5) {
-        lines.push(bullet(p['Project'] + ' (#' + p['Project ID'] + ') is running +' + p['Overage (hrs)'] + ' hrs (' + p['Overage %'] + '% over estimate).'));
-        concerns++;
-      }
-    });
-    if (waRows.length > 0 && waRows[0]['Total Overage (hrs)'] > 0) {
-      lines.push(bullet('"' + waRows[0]['WA Type'] + '" is the highest-overage work assignment type at +' + waRows[0]['Total Overage (hrs)'] + ' hrs across all projects.'));
-    }
-    lines.push('');
 
-    // BRIGHT SPOTS
-    lines.push('BRIGHT SPOTS:');
-    var bright = 0;
-    asgnRows.filter(function(a) { return a['Overage (hrs)'] === 0 && a['Logged (hrs)'] > 0; }).slice(0, 3).forEach(function(a) {
-      lines.push(bullet(a.Assignee + ' delivered on or under budget (' + a['Logged (hrs)'] + ' hrs logged vs ' + a['Estimated (hrs)'] + ' hrs estimated).'));
-      bright++;
-    });
-    projRows.filter(function(p) { return p['Overage (hrs)'] === 0 && p['Logged (hrs)'] > 0; }).slice(0, 3).forEach(function(p) {
-      lines.push(bullet(p['Project'] + ' is on budget.'));
-      bright++;
-    });
-    if (bright === 0) {
-      lines.push(bullet('All tracked items show some overage. Focus efforts on reducing variance in high-impact WA types.'));
-    }
-    lines.push('');
+    // ── BPD vs SA SUMMARY ───────────────────────────────────────────────────
+    lines.push('BPD vs SA SUMMARY (across all categories):');
+    lines.push(sep());
 
-    // RECOMMENDED ACTIONS
+    function taskTypeSummary(label, t) {
+      var net    = t.saved - t.over;
+      var netStr = net >= 0 ? '-' + net.toFixed(1) + ' hrs saved overall' : '+' + Math.abs(net).toFixed(1) + ' hrs lost overall';
+      var overP  = t.est > 0 ? ((t.over / t.est) * 100).toFixed(1) : '0.0';
+      lines.push(label + ':');
+      lines.push('   Estimated: ' + t.est.toFixed(1) + ' hrs  |  Logged: ' + t.worked.toFixed(1) + ' hrs  |  Total overage: +' + t.over.toFixed(1) + ' hrs (' + overP + '%)  |  Time saved: -' + t.saved.toFixed(1) + ' hrs  |  Net: ' + netStr);
+    }
+
+    taskTypeSummary('Business Process Design (BPD)', bpdTot);
+    lines.push(sep());
+    taskTypeSummary('Solutions Analysis (SA)', saTot);
+    lines.push(sep());
+
+    // ── RECOMMENDED ACTIONS ─────────────────────────────────────────────────
     lines.push('RECOMMENDED ACTIONS:');
-    var topWA   = waRows.length  > 0 ? waRows[0]['WA Type']   : 'high-overage WA types';
-    var topAsgn = asgnRows.length > 0 ? asgnRows[0].Assignee   : 'top assignees';
-    var topProj = projRows.length > 0 ? projRows[0]['Project'] : 'high-overage projects';
-    lines.push(bullet('Schedule a review with ' + topAsgn + ' to understand root causes behind their overage and determine if re-estimation is needed.'));
-    lines.push(bullet('Audit estimates for "' + topWA + '" tasks — this WA type is the largest driver of overage and estimates may need to be revised upward.'));
-    lines.push(bullet('Flag ' + topProj + ' for leadership review given its overage level and assess whether scope, resourcing, or timeline adjustments are needed.'));
-    lines.push('');
+    var topWAName = top3WA.length > 0 ? top3WA[0][0] : 'top WA types';
+    var topWAProj = top3WA.length > 0 && Object.values(top3WA[0][1].projects).length > 0
+      ? Object.values(top3WA[0][1].projects).sort(function(a,b){return b.over-a.over;})[0].name
+      : 'key projects';
+    lines.push(bullet('Prioritize review of "' + topWAName + '" — it is the single largest driver of overage. Start with ' + topWAProj + '.'));
+    if (top3WA.length > 1) {
+      lines.push(bullet('Re-evaluate estimates for "' + top3WA[1][0] + '" tasks. Consistent overage in this category suggests the original estimates may be systematically low.'));
+    }
+    var highLossBPD = bpdTot.over > saTot.over;
+    lines.push(bullet((highLossBPD ? 'BPD' : 'SA') + ' tasks are driving the majority of overage. Consider whether additional capacity or tighter scoping is needed in that track.'));
+    lines.push(sep());
     lines.push('---');
     lines.push('Report generated: ' + today);
 
     var commentary = lines.join('\n');
 
+    
     // // ── Build Excel workbook ─────────────────────────────────────────────────
     showExportModal('Generating Report', 'Building Excel workbook…');
 
@@ -877,15 +948,135 @@ async function exportReport() {
     };
 
     // Tab 1: Executive Summary (commentary as text)
-    const today = new Date().toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
-    var summaryLines = commentary.split('\n').filter(function(l){ return l.trim(); });
-    var summaryData = [
-      { 'Executive Summary': 'Generated: ' + today },
-      { 'Executive Summary': '' }
-    ].concat(summaryLines.map(function(line){ return { 'Executive Summary': line }; }));
-    var wsSummary = XLSX.utils.json_to_sheet(summaryData);
-    wsSummary['!cols'] = [{ wch: 90 }];
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Executive Summary');
+    // Build Executive Summary sheet cell-by-cell with proper columns
+    var wsExec = {};
+    var R = 1; // current row (1-indexed)
+
+    function setCell(ws, col, row, val, bold, bg, numFmt) {
+      var addr = col + row;
+      ws[addr] = { v: val, t: typeof val === 'number' ? 'n' : 's' };
+      if (numFmt) ws[addr].z = numFmt;
+      ws[addr].s = {
+        font:  { bold: !!bold, name: 'Arial', sz: bold ? 11 : 10 },
+        fill:  bg ? { fgColor: { rgb: bg }, patternType: 'solid' } : undefined,
+        alignment: { vertical: 'center', wrapText: true }
+      };
+    }
+
+    function hdr(ws, row, text, cols) {
+      // Merge header across cols A-F
+      setCell(ws, 'A', row, text, true, '1F3864');
+      ws['A'+row].s.font.color = { rgb: 'FFFFFF' };
+      ws['A'+row].s.font.sz = 12;
+      // blank the rest of the merged range
+      ['B','C','D','E','F'].slice(0, cols-1).forEach(function(c){ ws[c+row] = {v:'',t:'s'}; });
+      if (!ws['!merges']) ws['!merges'] = [];
+      ws['!merges'].push({ s:{r:row-1,c:0}, e:{r:row-1,c:cols-1} });
+    }
+
+    function subHdr(ws, row, cols, labels) {
+      labels.forEach(function(lbl, i) {
+        var col = String.fromCharCode(65+i);
+        ws[col+row] = { v: lbl, t: 's', s: { font:{bold:true,name:'Arial',sz:9}, fill:{fgColor:{rgb:'D6E4F0'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'} } };
+      });
+    }
+
+    function dataRow(ws, row, vals, overage) {
+      vals.forEach(function(val, i) {
+        var col = String.fromCharCode(65+i);
+        var isNum = typeof val === 'number';
+        var cell = { v: val, t: isNum ? 'n' : 's', s: {
+          font:  { name:'Arial', sz:10, bold: i===0, color: (overage && i > 1) ? {rgb:'C00000'} : undefined },
+          fill:  { fgColor:{rgb: row%2===0 ? 'F5F5F5' : 'FFFFFF'}, patternType:'solid' },
+          alignment: { horizontal: i===0 ? 'left' : 'center', vertical:'center', wrapText: true }
+        }};
+        if (isNum && i > 0) cell.z = '0.0';
+        ws[col+row] = cell;
+      });
+    }
+
+    // ── TITLE ──
+    wsExec['A'+R] = { v: 'Time Overage — Executive Summary', t:'s', s:{ font:{bold:true,name:'Arial',sz:14,color:{rgb:'1F3864'}}, alignment:{vertical:'center'} }};
+    wsExec['B'+R] = {v:'',t:'s'}; wsExec['C'+R]={v:'',t:'s'}; wsExec['D'+R]={v:'',t:'s'}; wsExec['E'+R]={v:'',t:'s'}; wsExec['F'+R]={v:'',t:'s'};
+    if (!wsExec['!merges']) wsExec['!merges'] = [];
+    wsExec['!merges'].push({s:{r:0,c:0},e:{r:0,c:4}});
+    R++;
+    wsExec['A'+R] = { v: 'Generated: ' + today, t:'s', s:{ font:{name:'Arial',sz:9,italic:true,color:{rgb:'666666'}}, alignment:{vertical:'center'} }};
+    R++; R++;
+
+    // ── PORTFOLIO METRICS ──
+    hdr(wsExec, R, 'PORTFOLIO METRICS', 5); R++;
+    subHdr(wsExec, R, 5, ['Metric','Estimated (hrs)','Logged (hrs)','Overage (hrs)','Overage %']); R++;
+    dataRow(wsExec, R, ['Overall Portfolio', +totEst.toFixed(1), +totWorked.toFixed(1), +totOver.toFixed(1), +(overPct.toFixed(1))], totOver > 0); R++;
+    dataRow(wsExec, R, ['Business Process Design (BPD)', +bpdTot.est.toFixed(1), +bpdTot.worked.toFixed(1), +bpdTot.over.toFixed(1), bpdTot.est>0?+((bpdTot.over/bpdTot.est)*100).toFixed(1):0], bpdTot.over > 0); R++;
+    dataRow(wsExec, R, ['Solutions Analysis (SA)', +saTot.est.toFixed(1), +saTot.worked.toFixed(1), +saTot.over.toFixed(1), saTot.est>0?+((saTot.over/saTot.est)*100).toFixed(1):0], saTot.over > 0); R++;
+    R++;
+
+    // ── TOP 3 OVERAGE CATEGORIES ──
+    hdr(wsExec, R, 'TOP 3 OVERAGE CATEGORIES', 7); R++;
+    subHdr(wsExec, R, 7, ['WA Type','Type','Estimated (hrs)','Logged (hrs)','Overage (hrs)','Time Saved (hrs)','Net Over/Under (hrs)']); R++;
+    top3WA.forEach(function(entry) {
+      var wn = entry[0], d = entry[1];
+      var netVal = +(d.saved - d.over).toFixed(1);
+      // Write standard cols first
+      dataRow(wsExec, R, [wn, d.prefix, +d.est.toFixed(1), +d.worked.toFixed(1), +d.over.toFixed(1), +d.saved.toFixed(1), netVal], true);
+      // Override col G (Net) with bold + colour
+      var netColor = netVal >= 0 ? '375623' : 'C00000';
+      wsExec['G'+R] = { v: netVal, t:'n', z:'0.0', s:{
+        font:  { bold:true, name:'Arial', sz:10, color:{rgb:netColor} },
+        fill:  { fgColor:{rgb: R%2===0 ? 'F5F5F5' : 'FFFFFF'}, patternType:'solid' },
+        alignment: { horizontal:'center', vertical:'center' }
+      }};
+      R++;
+    });
+    R++;
+
+    // ── PROJECTS WITHIN TOP 3 ──
+    hdr(wsExec, R, 'WORST PROJECTS WITHIN TOP 3 CATEGORIES', 6); R++;
+    subHdr(wsExec, R, 6, ['Project','WA Category','Estimated (hrs)','Logged (hrs)','Overage (hrs)','Overage %']); R++;
+    top3WA.forEach(function(entry) {
+      var wn = entry[0], d = entry[1];
+      var projsSorted = Object.values(d.projects)
+        .filter(function(p){ return p.over > 0; })
+        .sort(function(a,b){ return b.over - a.over; })
+        .slice(0, 3);
+      projsSorted.forEach(function(p) {
+        var ppct = p.est > 0 ? +((p.over/p.est)*100).toFixed(1) : 0;
+        dataRow(wsExec, R, [p.name + ' (#' + p.id + ')', wn, +p.est.toFixed(1), +p.worked.toFixed(1), +p.over.toFixed(1), ppct], true); R++;
+      });
+    });
+    R++;
+
+    // ── BPD vs SA DETAIL ──
+    hdr(wsExec, R, 'BPD vs SA — NET SUMMARY', 5); R++;
+    subHdr(wsExec, R, 5, ['Track','Estimated (hrs)','Logged (hrs)','Overage (hrs)','Time Saved (hrs)']); R++;
+    dataRow(wsExec, R, ['BPD — Business Process Design', +bpdTot.est.toFixed(1), +bpdTot.worked.toFixed(1), +bpdTot.over.toFixed(1), +bpdTot.saved.toFixed(1)], bpdTot.over > 0); R++;
+    dataRow(wsExec, R, ['SA — Solutions Analysis',       +saTot.est.toFixed(1),  +saTot.worked.toFixed(1),  +saTot.over.toFixed(1),  +saTot.saved.toFixed(1)],  saTot.over > 0);  R++;
+    R++;
+
+    // ── RECOMMENDED ACTIONS (text) ──
+    hdr(wsExec, R, 'RECOMMENDED ACTIONS', 5); R++;
+    var topWAName2 = top3WA.length > 0 ? top3WA[0][0] : 'top WA types';
+    var topWAProj2 = top3WA.length > 0 && Object.values(top3WA[0][1].projects).length > 0
+      ? Object.values(top3WA[0][1].projects).sort(function(a,b){return b.over-a.over;})[0].name : 'key projects';
+    var actions = [
+      '1. Prioritize review of "' + topWAName2 + '" — largest single driver of overage. Start with ' + topWAProj2 + '.',
+      top3WA.length > 1 ? '2. Re-evaluate estimates for "' + top3WA[1][0] + '" — consistent overage suggests estimates may be systematically low.' : '',
+      '3. ' + (bpdTot.over > saTot.over ? 'BPD' : 'SA') + ' tasks are driving the majority of overage. Consider additional capacity or tighter scoping in that track.'
+    ].filter(Boolean);
+    actions.forEach(function(a) {
+      wsExec['A'+R] = { v: a, t:'s', s:{ font:{name:'Arial',sz:10}, fill:{fgColor:{rgb:'FFFBEA'},patternType:'solid'}, alignment:{wrapText:true,vertical:'center'} }};
+      ['B','C','D','E'].forEach(function(c){ wsExec[c+R]={v:'',t:'s',s:{fill:{fgColor:{rgb:'FFFBEA'},patternType:'solid'}}}; });
+      wsExec['!merges'].push({s:{r:R-1,c:0},e:{r:R-1,c:4}});
+      R++;
+    });
+
+    // Set sheet ref and column widths
+    wsExec['!ref'] = 'A1:G' + R;
+    wsExec['!cols'] = [{wch:42},{wch:18},{wch:16},{wch:16},{wch:16},{wch:18},{wch:20}];
+    wsExec['!rows'] = [];
+    for (var ri=0; ri<R; ri++) wsExec['!rows'].push({hpt:18});
+    XLSX.utils.book_append_sheet(wb, wsExec, 'Executive Summary');
 
     // Tab 2: Overall Metrics
     const metricsData = [
