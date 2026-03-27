@@ -792,42 +792,77 @@ async function exportReport() {
         'Due Date':        r['DateAssignmentDue']
       }));
 
-    // ── Call API for commentary ──────────────────────────────────────────────
-    showExportModal('Generating Report', 'Writing leadership commentary…');
+    // ── Generate commentary locally from data
+    showExportModal('Generating Report', 'Writing leadership commentary...');
 
-    const prompt = 'You are preparing a concise executive summary for company leadership about software project time overages.\n\n'
-      + 'DATA SUMMARY:\n'
-      + '- Total estimated hours: ' + totEst.toFixed(1) + '\n'
-      + '- Total logged hours: ' + totWorked.toFixed(1) + '\n'
-      + '- Total overage: ' + totOver.toFixed(1) + ' hrs (' + overPct.toFixed(1) + '% over budget)\n'
-      + '- Projects tracked: ' + Object.keys(projMap).length + '\n'
-      + '- Assignees: ' + asgnRows.length + '\n\n'
-      + 'TOP 5 ASSIGNEES BY OVERAGE:\n'
-      + asgnRows.slice(0,5).map(a => '- ' + a.Assignee + ': +' + a['Overage (hrs)'] + ' hrs (' + a['Overage %'] + '% over, estimated ' + a['Estimated (hrs)'] + ' hrs)').join('\n') + '\n\n'
-      + 'TOP 5 PROJECTS BY OVERAGE:\n'
-      + projRows.slice(0,5).map(p => '- ' + p.Project + ' (#' + p['Project ID'] + '): +' + p['Overage (hrs)'] + ' hrs (' + p['Overage %'] + '% over)').join('\n') + '\n\n'
-      + 'TOP 5 WA TYPES BY OVERAGE:\n'
-      + waRows.slice(0,5).map(w => '- ' + w['WA Type'] + ': +' + w['Total Overage (hrs)'] + ' hrs total overage').join('\n') + '\n\n'
-      + 'Write a professional executive summary with these sections:\n'
-      + '1. OVERALL STATUS (2-3 sentences: are we ahead or behind, key headline number)\n'
-      + '2. KEY CONCERNS (bullet points: flag the top 3 things leadership needs to know - name specific people/projects if they stand out significantly)\n'
-      + '3. BRIGHT SPOTS (bullet points: what is working well, who came in under budget)\n'
-      + '4. RECOMMENDED ACTIONS (bullet points: 2-3 concrete actions to address the overages)\n\n'
-      + 'Keep it concise, data-driven, and direct. No fluff. Format each section with its heading in ALL CAPS followed by a colon.'
+    // Helper
+    function pct(over, est) { return est > 0 ? ((over/est)*100).toFixed(1) : '0.0'; }
+    function bullet(s) { return '  - ' + s; }
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    var lines = [];
+
+    // OVERALL STATUS
+    lines.push('OVERALL STATUS:');
+    var statusMsg = overPct > 25
+      ? 'The portfolio is significantly over budget. ' + totOver.toFixed(1) + ' hours have been logged beyond estimates (' + overPct.toFixed(1) + '% over) across ' + Object.keys(projMap).length + ' projects. Immediate review is warranted.'
+      : overPct > 10
+      ? 'The portfolio is moderately over budget at ' + overPct.toFixed(1) + '% (' + totOver.toFixed(1) + ' hrs over). Most overages are concentrated in a small number of projects and assignees.'
+      : 'The portfolio is broadly on track at ' + overPct.toFixed(1) + '% over estimated (' + totOver.toFixed(1) + ' hrs). Variance is within acceptable range but a few items warrant attention.';
+    lines.push(statusMsg);
+    lines.push('Total estimated: ' + totEst.toFixed(1) + ' hrs | Total logged: ' + totWorked.toFixed(1) + ' hrs | Total overage: +' + totOver.toFixed(1) + ' hrs');
+    lines.push('');
+
+    // KEY CONCERNS
+    lines.push('KEY CONCERNS:');
+    var concerns = 0;
+    asgnRows.slice(0, 5).forEach(function(a) {
+      if (a['Overage (hrs)'] > 0 && concerns < 3) {
+        lines.push(bullet(a.Assignee + ' is ' + a['Overage (hrs)'] + ' hrs over budget (' + a['Overage %'] + '% over their ' + a['Estimated (hrs)'] + ' hr estimate).'));
+        concerns++;
+      }
     });
-    const apiData = await resp.json();
-    const commentary = apiData.content?.find(b => b.type === 'text')?.text || 'Commentary unavailable.';
+    projRows.slice(0, 5).forEach(function(p) {
+      if (p['Overage (hrs)'] > 0 && concerns < 5) {
+        lines.push(bullet(p['Project'] + ' (#' + p['Project ID'] + ') is running +' + p['Overage (hrs)'] + ' hrs (' + p['Overage %'] + '% over estimate).'));
+        concerns++;
+      }
+    });
+    if (waRows.length > 0 && waRows[0]['Total Overage (hrs)'] > 0) {
+      lines.push(bullet('"' + waRows[0]['WA Type'] + '" is the highest-overage work assignment type at +' + waRows[0]['Total Overage (hrs)'] + ' hrs across all projects.'));
+    }
+    lines.push('');
 
-    // ── Build Excel workbook ─────────────────────────────────────────────────
+    // BRIGHT SPOTS
+    lines.push('BRIGHT SPOTS:');
+    var bright = 0;
+    asgnRows.filter(function(a) { return a['Overage (hrs)'] === 0 && a['Logged (hrs)'] > 0; }).slice(0, 3).forEach(function(a) {
+      lines.push(bullet(a.Assignee + ' delivered on or under budget (' + a['Logged (hrs)'] + ' hrs logged vs ' + a['Estimated (hrs)'] + ' hrs estimated).'));
+      bright++;
+    });
+    projRows.filter(function(p) { return p['Overage (hrs)'] === 0 && p['Logged (hrs)'] > 0; }).slice(0, 3).forEach(function(p) {
+      lines.push(bullet(p['Project'] + ' is on budget.'));
+      bright++;
+    });
+    if (bright === 0) {
+      lines.push(bullet('All tracked items show some overage. Focus efforts on reducing variance in high-impact WA types.'));
+    }
+    lines.push('');
+
+    // RECOMMENDED ACTIONS
+    lines.push('RECOMMENDED ACTIONS:');
+    var topWA   = waRows.length  > 0 ? waRows[0]['WA Type']   : 'high-overage WA types';
+    var topAsgn = asgnRows.length > 0 ? asgnRows[0].Assignee   : 'top assignees';
+    var topProj = projRows.length > 0 ? projRows[0]['Project'] : 'high-overage projects';
+    lines.push(bullet('Schedule a review with ' + topAsgn + ' to understand root causes behind their overage and determine if re-estimation is needed.'));
+    lines.push(bullet('Audit estimates for "' + topWA + '" tasks — this WA type is the largest driver of overage and estimates may need to be revised upward.'));
+    lines.push(bullet('Flag ' + topProj + ' for leadership review given its overage level and assess whether scope, resourcing, or timeline adjustments are needed.'));
+    lines.push('');
+    lines.push('---');
+    lines.push('Report generated: ' + today);
+
+    var commentary = lines.join('\n');
+
+    // // ── Build Excel workbook ─────────────────────────────────────────────────
     showExportModal('Generating Report', 'Building Excel workbook…');
 
     const wb = XLSX.utils.book_new();
