@@ -368,6 +368,7 @@ function loadData() {
   }
   rows = parsed;
   el.className='status ok'; el.textContent='Loaded '+rows.length+' rows'+(nulls?' ('+nulls+' NULL excluded)':'')+ '.';
+  var expBtn=document.getElementById('export-btn'); if(expBtn) expBtn.style.display='inline-block';
   populateFilters();
   renderAssignee(); renderWAType(); renderTrend(); renderWorst();
 }
